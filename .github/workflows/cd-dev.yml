@@ -1,0 +1,64 @@
+name: CD-dev
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [dev]
+    types: 
+      - completed
+
+permissions:
+  actions: read
+  contents: read
+
+# Deploys push the latest dev, so queued runs collapse to the newest one.
+# Never cancel a running deploy.
+concurrency:
+  group: cd-dev
+  cancel-in-progress: false
+
+jobs:
+  on-success:
+    runs-on: ubuntu-22.04
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Download deploy decision
+        uses: actions/download-artifact@v4
+        with:
+          name: cd-deploy
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Read deploy decision
+        id: gate
+        shell: bash
+        run: |
+          value=$(tr -d '[:space:]' < deploy.txt)
+          echo "deploy=$value" >> "$GITHUB_OUTPUT"
+          if [ "$value" = "true" ]; then
+            echo "Deploying: this push changes the image or the deploy workflow."
+          else
+            echo "Skipping deploy: no devops, mix, config, app code, style, translation, or image changes."
+          fi
+
+      - name: Cloning repo
+        if: steps.gate.outputs.deploy == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to dokku
+        if: steps.gate.outputs.deploy == 'true'
+        uses: dokku/github-action@master
+        with:
+          # specify the `main` branch as the remote branch to push to
+          branch: 'main'
+          git_remote_url: ${{ secrets.SSH_REMOTE_DEV_URL }}
+          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+  on-failure:
+    runs-on: ubuntu-20.04
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    steps:
+      - run: echo 'The triggering workflow failed'

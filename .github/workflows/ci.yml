@@ -1,0 +1,241 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  # Branch pushes are covered by the pull_request run; only dev needs its own
+  # push run (CD-dev follows it).
+  push:
+    branches:
+      - dev
+    # This action is not triggered when markdown files are modified.
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    branches:
+      - "*"
+    # This action is not triggered when markdown files are modified.
+    paths-ignore:
+      - '**.md'
+
+# A newer push to the same ref makes the older run pointless. dev is excluded:
+# the deploy decision diffs only the last push, so a cancelled run would lose changes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/dev' }}
+
+env:
+  # Permissions env
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # General env
+  ELIXIR_VERSION: 1.20.1
+  OTP_VERSION: 29.0.2
+  # Postgres env
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+  POSTGRES_HOSTNAME: localhost
+  # Redis env
+  REDIS_HOST: localhost
+  REDIS_PORT: 6379
+  REDIS_PASS: ${{ secrets.REDIS_PASS }}
+  # Misc env
+  UPLOADS_PATH: priv/static/uploads/
+
+jobs:
+  # Decide which checks are needed from the files this push or pull request touches.
+  changes:
+    runs-on: ubuntu-22.04
+    outputs:
+      elixir: ${{ steps.filter.outputs.elixir }}
+      js: ${{ steps.filter.outputs.js }}
+      deploy: ${{ steps.filter.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect changed files
+        id: filter
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          # Changes to the CI setup itself re-run everything.
+          ci_re='^\.github/(workflows/ci\.yml|actions/)'
+          elixir_re="\.(ex|exs|heex|eex)$|^(mix\.lock|\.formatter\.exs|\.credo\.exs|\.dialyzer_ignore\.exs)$|^config/|$ci_re"
+          js_re="^assets/(js|vendor)/|^assets/package(-lock)?\.json$|$ci_re"
+          # What CD-dev is allowed to ship. The image copies devops/, mix.exs,
+          # mix.lock, config/, lib/, priv/ and assets/. CSS, gettext, images
+          # and heroicons are part of that copy. Test files are not, but a
+          # test change still deploys.
+          deploy_re='^(devops/|config/|\.dockerignore$|mix\.exs$|mix\.lock$|\.github/workflows/cd-dev\.yml$|assets/package(-lock)?\.json$|priv/gettext/|assets/vendor/heroicons/|(lib|priv|test|assets)/.+\.(ex|exs|heex|eex|js|css|svg|png|jpe?g|gif|webp|ico)$)'
+
+          case "$EVENT" in
+            pull_request) range="$PR_BASE...$PR_HEAD" ;;
+            push) range="$PUSH_BEFORE..$GITHUB_SHA" ;;
+            *) range="" ;;
+          esac
+
+          # Manual runs, new branches and unreachable commits run everything.
+          if [[ -z "$range" || "$range" == 0000000* ]] || ! files=$(git diff --name-only "$range"); then
+            echo "elixir=true" >> "$GITHUB_OUTPUT"
+            echo "js=true" >> "$GITHUB_OUTPUT"
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            echo true > deploy.txt
+            exit 0
+          fi
+
+          echo "$files"
+          echo "elixir=$(grep -Eq "$elixir_re" <<< "$files" && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "js=$(grep -Eq "$js_re" <<< "$files" && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          deploy=$(grep -Eq "$deploy_re" <<< "$files" && echo true || echo false)
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+          echo "$deploy" > deploy.txt
+      - name: Publish deploy decision
+        uses: actions/upload-artifact@v4
+        with:
+          name: cd-deploy
+          path: deploy.txt
+          retention-days: 1
+
+  # Formatter, credo and dialyzer only matter when Elixir code changed.
+  dev:
+    needs: changes
+    if: needs.changes.outputs.elixir == 'true'
+    runs-on: ubuntu-22.04
+    services:
+      db:
+        image: postgres
+        ports: ['5432:5432']
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      # Setup & run Redis -----------------------------------------------------
+      - name: Run redis with a password
+        shell: bash
+        run: |
+          docker run \
+            --rm \
+            --name redis \
+            -p ${{ env.REDIS_PORT }}:6379 \
+            -d redis:7-alpine redis-server \
+            --appendonly yes \
+            --requirepass ${{ env.REDIS_PASS }} \
+            --port ${{ env.REDIS_PORT }}
+
+      # Run the dev action ----------------------------------------------------
+      - uses: actions/checkout@v4
+      - name: Run Development Checks
+        uses: ./.github/actions/dev
+        with:
+          ELIXIR_VERSION: ${{ env.ELIXIR_VERSION }}
+          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+          MIX_ENV: dev
+          OTP_VERSION: ${{ env.OTP_VERSION }}
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          REDIS_HOST: ${{ env.REDIS_HOST }}
+          REDIS_PASS: ${{ env.REDIS_PASS }}
+          UPLOADS_PATH: ${{ env.UPLOADS_PATH }}
+
+  # Tests run when Elixir or JS code changed.
+  test:
+    needs: changes
+    if: needs.changes.outputs.elixir == 'true' || needs.changes.outputs.js == 'true'
+    runs-on: ubuntu-22.04
+    services:
+      db:
+        image: postgres
+        ports: ['5432:5432']
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      # Setup & run Redis -----------------------------------------------------
+      - name: Run redis with a password
+        shell: bash
+        run: |
+          docker run \
+            --rm \
+            --name redis \
+            -p ${{ env.REDIS_PORT }}:6379 \
+            -d redis:7-alpine redis-server \
+            --appendonly yes \
+            --requirepass ${{ env.REDIS_PASS }} \
+            --port ${{ env.REDIS_PORT }}
+
+      # Run the test action ---------------------------------------------------
+      - uses: actions/checkout@v4
+      - name: Run Unit Tests
+        uses: ./.github/actions/test
+        with:
+          ELIXIR_VERSION: ${{ env.ELIXIR_VERSION }}
+          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+          MIX_ENV: test
+          OTP_VERSION: ${{ env.OTP_VERSION }}
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          REDIS_HOST: ${{ env.REDIS_HOST }}
+          REDIS_PASS: ${{ env.REDIS_PASS }}
+          UPLOADS_PATH: ${{ env.UPLOADS_PATH }}
+
+  # The release only needs checking when something it ships changed.
+  prod:
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true'
+    runs-on: ubuntu-22.04
+    services:
+      db:
+        image: postgres
+        ports: ['5432:5432']
+        env:
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      # Setup & run Redis -----------------------------------------------------
+      - name: Run redis with a password
+        shell: bash
+        run: |
+          docker run \
+            --rm \
+            --name redis \
+            -p ${{ env.REDIS_PORT }}:6379 \
+            -d redis:7-alpine redis-server \
+            --appendonly yes \
+            --requirepass ${{ env.REDIS_PASS }} \
+            --port ${{ env.REDIS_PORT }}
+
+      - uses: actions/checkout@v4
+      - name: Assemble release
+        uses: ./.github/actions/prod
+        with:
+          ELIXIR_VERSION: ${{ env.ELIXIR_VERSION }}
+          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+          MIX_ENV: prod
+          OTP_VERSION: ${{ env.OTP_VERSION }}
+          POSTGRES_HOSTNAME: ${{ env.POSTGRES_HOSTNAME }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          REDIS_HOST: ${{ env.REDIS_HOST }}
+          REDIS_PASS: ${{ env.REDIS_PASS }}
+          UPLOADS_PATH: ${{ env.UPLOADS_PATH }}
