@@ -12,4 +12,17 @@ defmodule DcompWeb.GameLiveLayoutModeTest do
     render_hook(view, "puzzle-ready", %{})
     assert_reply view, %{mode: "grid"}
   end
+
+  test "a viewer can switch the piece layout", %{conn: conn} do
+    game = synced_game_fixture()
+    {:ok, view, _} = live(conn, ~p"/games/#{game.slug}")
+    assert has_element?(view, "#layout-size[aria-pressed=true]")
+
+    view |> element("#layout-grid") |> render_click()
+    assert has_element?(view, "#layout-grid[aria-pressed=true]")
+    assert_push_event(view, "puzzle:data", %{mode: "grid"})
+
+    view |> element("#layout-size") |> render_click()
+    assert_push_event(view, "puzzle:data", %{mode: "size"})
+  end
 end

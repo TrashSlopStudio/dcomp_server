@@ -18,11 +18,19 @@ defmodule DcompWeb.GameLive.Show do
     game = Decomp.get_game_by_slug!(slug)
     if connected?(socket), do: Phoenix.PubSub.subscribe(Dcomp.PubSub, Sync.topic(slug))
 
-    {:ok, socket |> assign(page_title: game.name, game: game) |> load()}
+    {:ok, socket |> assign(page_title: game.name, game: game, layout_override: nil) |> load()}
   end
 
   @impl true
   def handle_event("puzzle-ready", _params, socket), do: {:reply, puzzle_payload(socket), socket}
+
+  def handle_event("set-layout", %{"mode" => mode}, socket) when mode in ~w(size grid) do
+    # This viewer's choice only; the admin setting stays the default for everyone else.
+    mode = String.to_existing_atom(mode)
+    socket = assign(socket, layout_override: mode, layout_mode: mode)
+    {:noreply, push_event(socket, "puzzle:data", puzzle_payload(socket))}
+  end
+
   def handle_event("burnup-ready", _params, socket), do: {:reply, burn_up_payload(socket), socket}
 
   @impl true
@@ -43,7 +51,7 @@ defmodule DcompWeb.GameLive.Show do
     socket
     |> assign(
       game: game,
-      layout_mode: Decomp.get_settings().layout_mode,
+      layout_mode: socket.assigns.layout_override || Decomp.get_settings().layout_mode,
       m: m,
       now: DateTime.utc_now()
     )
@@ -155,9 +163,30 @@ defmodule DcompWeb.GameLive.Show do
       <div class="grid gap-6 lg:grid-cols-3">
         <.panel id="puzzle-panel" title="The puzzle" class="lg:col-span-2">
           <:aside>
-            <span class="text-xs text-base-content/60">
-              {if @layout_mode == :size, do: "Pieces sized by function size", else: "Equal pieces"}
-            </span>
+            <div
+              id="layout-toggle"
+              role="group"
+              aria-label="Piece layout"
+              class="inline-flex rounded-lg border border-base-300 bg-base-100 p-0.5 text-xs"
+            >
+              <button
+                :for={{mode, label} <- [grid: "Equal pieces", size: "By function size"]}
+                id={"layout-#{mode}"}
+                type="button"
+                phx-click="set-layout"
+                phx-value-mode={mode}
+                aria-pressed={to_string(@layout_mode == mode)}
+                class={[
+                  "rounded-md px-2.5 py-1 font-medium transition",
+                  if(@layout_mode == mode,
+                    do: "bg-primary text-primary-content shadow",
+                    else: "text-base-content/60 hover:text-base-content"
+                  )
+                ]}
+              >
+                {label}
+              </button>
+            </div>
           </:aside>
           <div
             id="puzzle"
