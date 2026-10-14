@@ -83,13 +83,13 @@ defmodule Dcomp.Decomp.Sync do
 
     rows
     |> Enum.with_index(1)
-    |> Enum.reduce_while({:ok, []}, fn {line, n}, {:ok, acc} ->
+    |> Enum.reduce_while({:ok, [], MapSet.new()}, fn {line, n}, {:ok, acc, seen} ->
       with [addr, size, sha1] <- String.split(line, ","),
            true <- hex?(addr),
            {size, ""} when size >= 0 <- Integer.parse(size),
            addr = String.upcase(addr),
-           false <- Enum.any?(acc, &(&1.addr == addr)) do
-        {:cont, {:ok, [%{addr: addr, size: size, sha1: sha1} | acc]}}
+           false <- MapSet.member?(seen, addr) do
+        {:cont, {:ok, [%{addr: addr, size: size, sha1: sha1} | acc], MapSet.put(seen, addr)}}
       else
         _ ->
           {:halt,
@@ -97,7 +97,7 @@ defmodule Dcomp.Decomp.Sync do
       end
     end)
     |> case do
-      {:ok, list} -> {:ok, Enum.reverse(list)}
+      {:ok, list, _seen} -> {:ok, Enum.reverse(list)}
       error -> error
     end
   end
