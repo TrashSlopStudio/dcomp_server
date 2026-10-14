@@ -27,6 +27,18 @@ defmodule DcompWeb.AdminLiveTest do
       refute has_element?(view, "#nav-admin")
     end
 
+    test "an admin demoted while connected can't keep using the page", %{conn: conn} do
+      {:ok, admin} = Accounts.make_admin(user_fixture().email)
+      {:ok, view, _} = live(log_in_user(conn, admin), ~p"/admin/settings")
+
+      admin |> Ecto.Changeset.change(role: :user) |> Repo.update!()
+
+      assert {:error, {:redirect, %{to: "/"}}} =
+               view |> element("#rotate-key") |> render_click()
+
+      assert Repo.reload!(admin).role == :user
+    end
+
     test "admins get in and see the nav link", %{conn: conn} do
       {:ok, admin} = Accounts.make_admin(user_fixture().email)
       conn = log_in_user(conn, admin)

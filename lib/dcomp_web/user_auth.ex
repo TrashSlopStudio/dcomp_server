@@ -240,13 +240,32 @@ defmodule DcompWeb.UserAuth do
     socket = mount_current_scope(socket, session)
 
     if admin_scope?(socket.assigns.current_scope) do
-      {:cont, socket}
+      {:cont, attach_admin_recheck(socket)}
     else
       {:halt,
        socket
        |> Phoenix.LiveView.put_flash(:error, "You must be an admin to access this page.")
        |> Phoenix.LiveView.redirect(to: ~p"/")}
     end
+  end
+
+  # The role is read at mount only, so a connected admin page would keep working after a demotion.
+  # Re-read it from the database before every event.
+  defp attach_admin_recheck(socket) do
+    Phoenix.LiveView.attach_hook(socket, :recheck_admin, :handle_event, fn _event,
+                                                                           _params,
+                                                                           socket ->
+      user = Accounts.get_user(socket.assigns.current_scope.user.id)
+
+      if Accounts.User.admin?(user) do
+        {:cont, socket}
+      else
+        {:halt,
+         socket
+         |> Phoenix.LiveView.put_flash(:error, "You must be an admin to access this page.")
+         |> Phoenix.LiveView.redirect(to: ~p"/")}
+      end
+    end)
   end
 
   defp mount_current_scope(socket, session) do

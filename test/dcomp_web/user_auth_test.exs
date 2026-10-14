@@ -281,7 +281,8 @@ defmodule DcompWeb.UserAuthTest do
       %{
         socket: %Phoenix.LiveView.Socket{
           endpoint: DcompWeb.Endpoint,
-          assigns: %{__changed__: %{}, flash: %{}}
+          assigns: %{__changed__: %{}, flash: %{}},
+          private: %{lifecycle: %Phoenix.LiveView.Lifecycle{}, live_temp: %{}}
         }
       }
     end
