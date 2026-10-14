@@ -59,10 +59,15 @@ defmodule Dcomp.Decomp.Syncer do
   rescue
     e ->
       Logger.error("sync #{game.slug} crashed: #{Exception.message(e)}")
+      record_crash(game, Exception.message(e))
+  end
 
-      game
-      |> Decomp.Game.sync_changeset(%{last_sync_error: Exception.message(e)})
-      |> Dcomp.Repo.update()
+  # Best effort: the game may be gone (deleted mid-sync) or the database down, and a failure here
+  # must not take the syncer down with it.
+  defp record_crash(game, message) do
+    game |> Decomp.Game.sync_changeset(%{last_sync_error: message}) |> Dcomp.Repo.update()
+  rescue
+    e -> Logger.error("could not record the failure of #{game.slug}: #{Exception.message(e)}")
   end
 
   defp interval_ms, do: Decomp.get_settings().poll_interval_s * 1000
