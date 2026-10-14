@@ -41,14 +41,12 @@ defmodule DcompWeb.GameLive.Index do
             Each project is a git repository. You claim a function with a pull request, write C that compiles to exactly the original bytes, then open another pull request with the solution. CI checks and merges both, and this site picks them up on the next sync.
           </p>
           <p>
-            You can do it by hand or let your own
-            <a
+            You can do it by hand or let your own AI coding agent do the matching, such as <a
               href="https://claude.com/claude-code"
               target="_blank"
               rel="noopener"
               class="text-primary underline"
-            >Claude Code</a>
-            session do the matching. You bring your own legally obtained copy of the game, which is never uploaded or shared here.
+            >Claude Code</a>, Codex or Cursor. You bring your own legally obtained copy of the game, which is never uploaded or shared here.
           </p>
           <p>
             Open a project below for its repository, setup and rules.
