@@ -7,6 +7,7 @@ defmodule DcompWeb.Router do
     plug :accepts, ["html"]
     plug :fetch_session
     plug DcompWeb.Locale
+    plug DcompWeb.Lite
     plug :fetch_live_flash
     plug :put_root_layout, html: {DcompWeb.Layouts, :root}
     plug :protect_from_forgery
@@ -26,7 +27,11 @@ defmodule DcompWeb.Router do
     pipe_through :browser
 
     live_session :public,
-      on_mount: [{DcompWeb.Locale, :default}, {DcompWeb.UserAuth, :mount_current_scope}] do
+      on_mount: [
+        {DcompWeb.Locale, :default},
+        {DcompWeb.Lite, :default},
+        {DcompWeb.UserAuth, :mount_current_scope}
+      ] do
       live "/", GameLive.Index
       live "/games/:slug", GameLive.Show
     end
@@ -36,6 +41,7 @@ defmodule DcompWeb.Router do
     pipe_through :browser
 
     get "/locale/:locale", LocaleController, :update
+    get "/lite/:mode", LiteController, :update
   end
 
   # Uploaded game images. No session needed, so no pipeline.
@@ -73,7 +79,11 @@ defmodule DcompWeb.Router do
     pipe_through [:browser, :require_authenticated_user, :require_admin]
 
     live_session :admin,
-      on_mount: [{DcompWeb.Locale, :default}, {DcompWeb.UserAuth, :require_admin}] do
+      on_mount: [
+        {DcompWeb.Locale, :default},
+        {DcompWeb.Lite, :default},
+        {DcompWeb.UserAuth, :require_admin}
+      ] do
       live "/games", Games, :index
       live "/games/new", Games, :new
       live "/games/:id/edit", Games, :edit

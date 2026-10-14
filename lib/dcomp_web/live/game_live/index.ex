@@ -11,7 +11,7 @@ defmodule DcompWeb.GameLive.Index do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} wide>
-      <div id="home-backdrop" class="aurora" aria-hidden="true">
+      <div :if={!@lite} id="home-backdrop" class="aurora" aria-hidden="true">
         <span class="aurora-blob"></span>
         <span class="aurora-blob"></span>
         <span class="aurora-blob"></span>

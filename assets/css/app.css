@@ -179,3 +179,35 @@
     animation: none;
   }
 }
+
+/* Lite mode (html[data-lite]): a plain, vintage page that costs the browser almost nothing — no
+   animation, blur, shadows or rounded corners, system serif/monospace fonts. Colours still come
+   from the theme, so light and dark both work. */
+.lite-off { display: none; }
+html[data-lite] .lite-on { display: none; }
+html[data-lite] .lite-off { display: inline-block; }
+
+html[data-lite] body {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 17px;
+  line-height: 1.5;
+}
+html[data-lite] h1, html[data-lite] h2, html[data-lite] h3, html[data-lite] code,
+html[data-lite] pre, html[data-lite] table, html[data-lite] #site-nav {
+  font-family: "Courier New", Courier, monospace;
+}
+html[data-lite] *, html[data-lite] *::before, html[data-lite] *::after {
+  animation: none !important;
+  transition: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  backdrop-filter: none !important;
+  border-radius: 0 !important;
+}
+html[data-lite] [class*="bg-gradient"] { background-image: none; }
+html[data-lite] .aurora { display: none; }
+html[data-lite] header { position: static; border-bottom: 2px solid currentColor; }
+html[data-lite] main a, html[data-lite] main a:visited { text-decoration: underline; }
+html[data-lite] .border { border-width: 1px; border-style: solid; }
+html[data-lite] table { border-collapse: collapse; }
+html[data-lite] th, html[data-lite] td { border: 1px solid var(--color-base-300); padding: 0.2rem 0.5rem; }
