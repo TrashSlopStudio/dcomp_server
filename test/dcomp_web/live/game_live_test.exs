@@ -80,7 +80,9 @@ defmodule DcompWeb.GameLiveTest do
     end
 
     test "shows how to contribute to this game's repo", %{view: view, game: game} do
-      assert has_element?(view, "#contribute-open")
+      refute has_element?(view, "#contribute-modal")
+      view |> element("#contribute-open") |> render_click()
+      assert_patch(view, ~p"/games/#{game.slug}/contribute")
       assert has_element?(view, "#contribute-modal")
       assert has_element?(view, "#contribute-clone", "git clone #{game.repo_url}")
       assert has_element?(view, "#contribute-modal a[href='#{game.repo_url}']")
@@ -97,13 +99,13 @@ defmodule DcompWeb.GameLiveTest do
   test "shows the expected ROM SHA1 when the game has one", %{conn: conn} do
     sha = String.duplicate("ab", 20)
     game = synced_game_fixture() |> Ecto.Changeset.change(rom_sha1: sha) |> Dcomp.Repo.update!()
-    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}")
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}/contribute")
     assert has_element?(view, "#contribute-rom-sha1", sha)
   end
 
   test "the clone command shell-quotes an odd repo URL", %{conn: conn} do
     game = game_fixture(%{repo_url: "https://example.com/$(id);it's"})
-    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}")
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}/contribute")
 
     assert has_element?(
              view,

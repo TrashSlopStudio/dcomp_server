@@ -22,6 +22,9 @@ defmodule DcompWeb.GameLive.Show do
   end
 
   @impl true
+  def handle_params(_params, _uri, socket), do: {:noreply, socket}
+
+  @impl true
   # Lite mode has no puzzle or chart, so these events are ignored there.
   def handle_event(_event, _params, %{assigns: %{lite: true}} = socket), do: {:noreply, socket}
 
@@ -255,14 +258,13 @@ defmodule DcompWeb.GameLive.Show do
         <div class="flex flex-wrap items-end justify-between gap-3">
           <h1 id="game-title" class="text-3xl font-bold tracking-tight">{@game.name}</h1>
           <div class="flex flex-wrap items-center gap-3 text-sm text-base-content/60">
-            <button
+            <.link
               id="contribute-open"
-              type="button"
-              phx-click={show("#contribute-modal")}
+              patch={~p"/games/#{@game.slug}/contribute"}
               class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 font-medium text-primary-content transition hover:opacity-90"
             >
               <.icon name="hero-command-line" class="size-4" /> {gettext("Contribute")}
-            </button>
+            </.link>
             <a
               href={@game.repo_url}
               target="_blank"
@@ -1153,17 +1155,18 @@ defmodule DcompWeb.GameLive.Show do
       </script>
 
       <div
+        :if={@live_action == :contribute}
         id="contribute-modal"
-        class="fixed inset-0 z-50 hidden"
+        class="fixed inset-0 z-50"
         role="dialog"
         aria-modal="true"
         aria-labelledby="contribute-title"
-        phx-window-keydown={hide("#contribute-modal")}
+        phx-window-keydown={JS.patch(~p"/games/#{@game.slug}")}
         phx-key="escape"
       >
         <div
           class="absolute inset-0 bg-base-300/70 backdrop-blur-sm"
-          phx-click={hide("#contribute-modal")}
+          phx-click={JS.patch(~p"/games/#{@game.slug}")}
           aria-hidden="true"
         >
         </div>
@@ -1180,7 +1183,7 @@ defmodule DcompWeb.GameLive.Show do
               <button
                 id="contribute-close"
                 type="button"
-                phx-click={hide("#contribute-modal")}
+                phx-click={JS.patch(~p"/games/#{@game.slug}")}
                 aria-label={gettext("Close")}
                 class="rounded-lg p-1.5 text-base-content/60 transition hover:bg-base-200 hover:text-base-content"
               >
