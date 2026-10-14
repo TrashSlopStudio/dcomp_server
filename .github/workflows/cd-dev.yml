@@ -13,7 +13,8 @@ permissions:
   contents: read
 
 # Deploys push the latest main, so queued runs collapse to the newest one.
-# Never cancel a running deploy.
+# Never cancel a running deploy. A dropped queued run is not redeployed later:
+# the gate only diffs the last push, so push deploy-relevant changes one at a time.
 concurrency:
   group: cd-dev
   cancel-in-progress: false
