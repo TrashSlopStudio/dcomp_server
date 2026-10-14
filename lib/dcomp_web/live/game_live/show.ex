@@ -286,26 +286,20 @@ defmodule DcompWeb.GameLive.Show do
             </summary>
             <ol class="mt-3 list-decimal space-y-3 pl-5 text-base-content/80">
               <li>
-                Install
-                <a
-                  href="https://claude.com/claude-code"
-                  target="_blank"
-                  rel="noopener"
-                  class="text-primary underline"
-                >Claude Code</a>
-                and the
+                Install the
                 <a
                   href="https://cli.github.com"
                   target="_blank"
                   rel="noopener"
                   class="text-primary underline"
                 >GitHub CLI</a>
-                (<code class="rounded bg-base-300 px-1.5 py-0.5">gh auth login</code>).
+                (<code class="rounded bg-base-300 px-1.5 py-0.5">gh auth login</code>) and an AI coding agent of your choice, such as <a
+                  href="https://claude.com/claude-code"
+                  target="_blank"
+                  rel="noopener"
+                  class="text-primary underline"
+                >Claude Code</a>, Codex or Cursor.
                 <ul id="install-commands" class="mt-2 list-disc space-y-1 pl-5">
-                  <li>
-                    Claude Code:
-                    <code class="rounded bg-base-300 px-1.5 py-0.5">curl -fsSL https://claude.ai/install.sh | bash</code>
-                  </li>
                   <li>
                     GitHub CLI: <code class="rounded bg-base-300 px-1.5 py-0.5">brew install gh</code>
                     (macOS), or
@@ -316,6 +310,10 @@ defmodule DcompWeb.GameLive.Show do
                       rel="noopener"
                       class="text-primary underline"
                     >more info</a>)
+                  </li>
+                  <li>
+                    Claude Code, for example:
+                    <code class="rounded bg-base-300 px-1.5 py-0.5">curl -fsSL https://claude.ai/install.sh | bash</code>
                   </li>
                 </ul>
               </li>
@@ -346,8 +344,7 @@ defmodule DcompWeb.GameLive.Show do
                 </span>
               </li>
               <li>
-                Run <code class="rounded bg-base-300 px-1.5 py-0.5">claude</code>
-                in the clone and tell it:
+                Start your agent in the clone and tell it:
                 <p class="mt-2 rounded-lg bg-base-300/60 p-3 italic">
                   "Follow AGENTS.md and contribute to this decomp: claim a function, match it, and open the pull requests against the {@game.branch} branch."
                 </p>
