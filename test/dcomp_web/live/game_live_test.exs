@@ -20,10 +20,12 @@ defmodule DcompWeb.GameLiveTest do
       assert has_element?(view, "#games-#{game.id}", "30.0%")
     end
 
-    test "is visible to logged-out visitors with log in and register links", %{conn: conn} do
+    test "is visible to logged-out visitors with a log in link and no register link", %{
+      conn: conn
+    } do
       {:ok, view, _html} = live(conn, ~p"/")
       assert has_element?(view, "#nav-log-in")
-      assert has_element?(view, "#nav-register")
+      refute has_element?(view, "#nav-register")
       refute has_element?(view, "#nav-admin")
     end
   end

@@ -13,7 +13,7 @@ defmodule DcompWeb.UserSessionControllerTest do
       conn = get(conn, ~p"/users/log-in")
       response = html_response(conn, 200)
       assert response =~ "Log in"
-      assert response =~ ~p"/users/register"
+      refute response =~ "/users/register"
       assert response =~ "Log in with email"
     end
 
@@ -25,7 +25,6 @@ defmodule DcompWeb.UserSessionControllerTest do
         |> html_response(200)
 
       assert html =~ "You need to reauthenticate"
-      refute html =~ "Register"
       assert html =~ "Log in with email"
 
       assert html =~
@@ -36,7 +35,7 @@ defmodule DcompWeb.UserSessionControllerTest do
       conn = get(conn, ~p"/users/log-in?mode=password")
       response = html_response(conn, 200)
       assert response =~ "Log in"
-      assert response =~ ~p"/users/register"
+      refute response =~ "/users/register"
       assert response =~ "Log in with email"
     end
   end

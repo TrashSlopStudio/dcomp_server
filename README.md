@@ -25,8 +25,9 @@ sync, but the payload is never trusted: the server re-reads the repo itself. Ide
 login found in `pool/claims/*`; no emails are stored.
 
 **First run**
-1. Register on the site, then promote yourself:
-   `bin/dcomp eval 'Dcomp.Release.make_admin("you@example.com")'` (or `Dcomp.Accounts.make_admin/1` in `iex`).
+1. There is no public sign-up. Create your account and promote it from the console:
+   `bin/dcomp rpc 'Dcomp.Accounts.register_user(%{email: "you@example.com"})'`, then
+   `bin/dcomp eval 'Dcomp.Release.make_admin("you@example.com")'` (or the same two calls in `iex`).
 2. *Admin → Games → Add game*: name, `https://` repo URL, branch, optional puzzle image.
 3. *Admin → Settings*: generate the API key, set the poll interval and the puzzle layout
    (pieces sized by function size, or equal pieces).
