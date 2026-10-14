@@ -251,6 +251,40 @@ defmodule DcompWeb.GameLive.Show do
             </summary>
             <ol class="mt-3 list-decimal space-y-3 pl-5 text-base-content/80">
               <li>
+                Install
+                <a
+                  href="https://claude.com/claude-code"
+                  target="_blank"
+                  rel="noopener"
+                  class="text-primary underline"
+                >Claude Code</a>
+                and the
+                <a
+                  href="https://cli.github.com"
+                  target="_blank"
+                  rel="noopener"
+                  class="text-primary underline"
+                >GitHub CLI</a>
+                (<code class="rounded bg-base-300 px-1.5 py-0.5">gh auth login</code>).
+                <ul id="install-commands" class="mt-2 list-disc space-y-1 pl-5">
+                  <li>
+                    Claude Code:
+                    <code class="rounded bg-base-300 px-1.5 py-0.5">curl -fsSL https://claude.ai/install.sh | bash</code>
+                  </li>
+                  <li>
+                    GitHub CLI: <code class="rounded bg-base-300 px-1.5 py-0.5">brew install gh</code>
+                    (macOS), or
+                    <code class="rounded bg-base-300 px-1.5 py-0.5">sudo apt install gh</code>
+                    (Debian/Ubuntu, <a
+                      href="https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"
+                      target="_blank"
+                      rel="noopener"
+                      class="text-primary underline"
+                    >more info</a>)
+                  </li>
+                </ul>
+              </li>
+              <li>
                 Fork and clone <a
                   href={@game.repo_url}
                   target="_blank"
