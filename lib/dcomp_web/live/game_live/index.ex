@@ -23,13 +23,15 @@ defmodule DcompWeb.GameLive.Index do
         <div class="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-info/10" />
         <div class="relative">
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-            Community decompilation
+            {gettext("Community decompilation")}
           </p>
           <h1 class="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
-            Piece by piece, byte for byte
+            {gettext("Piece by piece, byte for byte")}
           </h1>
           <p class="mx-auto mt-4 max-w-xl text-base-content/70">
-            Pick a project, claim a function and solve it. Every solved function brings the game closer to being fully decompiled.
+            {gettext(
+              "Pick a project, claim a function and solve it. Every solved function brings the game closer to being fully decompiled."
+            )}
           </p>
         </div>
       </section>
@@ -39,22 +41,26 @@ defmodule DcompWeb.GameLive.Index do
         class="mb-8 rounded-2xl border border-base-300 bg-base-200/50 px-6 py-5"
       >
         <h2 class="flex items-center gap-2 font-semibold">
-          <.icon name="hero-information-circle" class="size-5 text-primary" /> How contributing works
+          <.icon name="hero-information-circle" class="size-5 text-primary" />
+          {gettext("How contributing works")}
         </h2>
         <div class="mt-3 space-y-3 text-sm text-base-content/80">
           <p>
-            Each project is a git repository. You claim a function with a pull request, write C that compiles to exactly the original bytes, then open another pull request with the solution. CI checks and merges both, and this site picks them up on the next sync.
+            {gettext(
+              "Each project is a git repository. You claim a function with a pull request, write C that compiles to exactly the original bytes, then open another pull request with the solution. CI checks and merges both, and this site picks them up on the next sync."
+            )}
           </p>
           <p>
-            You can do it by hand or let your own AI coding agent do the matching, such as <a
+            {gettext("You can do it by hand or let your own AI coding agent do the matching, such as")}
+            <a
               href="https://claude.com/claude-code"
               target="_blank"
               rel="noopener"
               class="text-primary underline"
-            >Claude Code</a>, Codex or Cursor. You bring your own legally obtained copy of the game, which is never uploaded or shared here.
+            >Claude Code</a>{gettext(", Codex or Cursor.")}
           </p>
           <p>
-            Open a project below for its repository, setup and rules.
+            {gettext("Open a project below for its repository, setup and rules.")}
           </p>
         </div>
       </section>
@@ -68,13 +74,13 @@ defmodule DcompWeb.GameLive.Index do
           id="games-empty"
           class="hidden only:block col-span-full rounded-2xl border border-dashed border-base-300 p-12 text-center text-base-content/60"
         >
-          No games yet.
+          {gettext("No games yet.")}
           <.link
             :if={admin?(@current_scope)}
             navigate={~p"/admin/games"}
             class="text-primary underline"
           >
-            Add the first one
+            {gettext("Add the first one")}
           </.link>
         </div>
         <.link
@@ -104,15 +110,15 @@ defmodule DcompWeb.GameLive.Index do
             <.progress_bar value={card.pct} />
             <dl class="mt-auto grid grid-cols-3 gap-2 text-center text-xs">
               <div>
-                <dt class="text-base-content/60">Solved</dt>
+                <dt class="text-base-content/60">{gettext("Solved")}</dt>
                 <dd class="text-base font-semibold">{number(card.totals.solved.count)}</dd>
               </div>
               <div>
-                <dt class="text-base-content/60">Claimed</dt>
+                <dt class="text-base-content/60">{gettext("Claimed")}</dt>
                 <dd class="text-base font-semibold">{number(card.totals.claimed.count)}</dd>
               </div>
               <div>
-                <dt class="text-base-content/60">Remaining</dt>
+                <dt class="text-base-content/60">{gettext("Remaining")}</dt>
                 <dd class="text-base font-semibold">{number(card.totals.remaining.count)}</dd>
               </div>
             </dl>
@@ -132,7 +138,7 @@ defmodule DcompWeb.GameLive.Index do
 
     {:ok,
      socket
-     |> assign(:page_title, "Games")
+     |> assign(:page_title, gettext("Games"))
      |> stream(:games, Enum.map(games, &card/1))}
   end
 

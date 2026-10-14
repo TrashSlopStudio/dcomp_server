@@ -58,7 +58,7 @@ defmodule DcompWeb.Layouts do
               id="nav-admin"
               class="rounded-lg px-3 py-1.5 transition hover:bg-base-200"
             >
-              Admin
+              {gettext("Admin")}
             </.link>
             <.link
               href={~p"/users/settings"}
@@ -73,7 +73,7 @@ defmodule DcompWeb.Layouts do
               id="nav-log-out"
               class="rounded-lg px-3 py-1.5 transition hover:bg-base-200"
             >
-              Log out
+              {gettext("Log out")}
             </.link>
           <% else %>
             <.link
@@ -81,9 +81,10 @@ defmodule DcompWeb.Layouts do
               id="nav-log-in"
               class="rounded-lg px-3 py-1.5 transition hover:bg-base-200"
             >
-              Log in
+              {gettext("Log in")}
             </.link>
           <% end %>
+          <.language_switcher />
           <.theme_toggle />
         </div>
       </nav>
@@ -96,6 +97,32 @@ defmodule DcompWeb.Layouts do
     </main>
 
     <.flash_group flash={@flash} />
+    """
+  end
+
+  @doc "Language links in the nav; the current one is marked."
+  def language_switcher(assigns) do
+    assigns = assign(assigns, :current, Gettext.get_locale(DcompWeb.Gettext))
+
+    ~H"""
+    <div id="language-switcher" class="flex items-center rounded-lg text-xs font-medium">
+      <.link
+        :for={locale <- DcompWeb.Locale.locales()}
+        id={"locale-#{locale}"}
+        href={~p"/locale/#{locale}"}
+        aria-current={if(locale == @current, do: "true")}
+        title={if(locale == "es_AR", do: "Español (Argentina)", else: "English")}
+        class={[
+          "rounded-md px-2 py-1 transition",
+          if(locale == @current,
+            do: "bg-base-200 text-base-content",
+            else: "text-base-content/60 hover:text-base-content"
+          )
+        ]}
+      >
+        {DcompWeb.Locale.label(locale)}
+      </.link>
+    </div>
     """
   end
 

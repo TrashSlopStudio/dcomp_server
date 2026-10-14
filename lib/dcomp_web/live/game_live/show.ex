@@ -118,16 +118,55 @@ defmodule DcompWeb.GameLive.Show do
       else: "'" <> String.replace(value, "'", "'\\''") <> "'"
   end
 
+  # Strings the colocated JS hooks draw themselves. `{n}`-style tokens are filled in by the hook.
+  defp puzzle_i18n(game) do
+    %{
+      names: [
+        pgettext("piece status", "Unclaimed"),
+        pgettext("piece status", "Claimed"),
+        pgettext("piece status", "Solved")
+      ],
+      caption: gettext("%{game} functions", game: game.name),
+      headers: [gettext("Address"), gettext("Size"), gettext("Status"), gettext("Contributor")],
+      showMore: gettext("Show more (%{shown} of %{total})", shown: "{shown}", total: "{total}"),
+      bytes: gettext("%{n} bytes", n: "{n}"),
+      unknown: gettext("Solved by an unknown contributor")
+    }
+  end
+
+  defp burn_up_i18n do
+    %{
+      none: gettext("No solves yet."),
+      title: gettext("Functions solved over time"),
+      solved: gettext("%{n} functions solved", n: "{n}"),
+      bytes: gettext("%{n} bytes", n: "{n}")
+    }
+  end
+
   defp rules(game) do
     [
-      game.max_claims && "up to #{game.max_claims} claims at once",
-      game.claim_hours && "claims expire after #{game.claim_hours} h",
-      game.max_strikes && "#{game.max_strikes} strikes and you can't claim"
+      game.max_claims &&
+        ngettext("up to %{n} claim at once", "up to %{n} claims at once", game.max_claims,
+          n: game.max_claims
+        ),
+      game.claim_hours && gettext("claims expire after %{n} h", n: game.claim_hours),
+      game.max_strikes &&
+        ngettext(
+          "%{n} strike and you can't claim",
+          "%{n} strikes and you can't claim",
+          game.max_strikes,
+          n: game.max_strikes
+        )
     ]
     |> Enum.filter(& &1)
     |> case do
-      [] -> "Release what you won't finish: expired claims earn strikes."
-      list -> "Rules here: " <> Enum.join(list, ", ") <> ". Release what you won't finish."
+      [] ->
+        gettext("Release what you won't finish: expired claims earn strikes.")
+
+      list ->
+        gettext("Rules here: %{rules}. Release what you won't finish.",
+          rules: Enum.join(list, ", ")
+        )
     end
   end
 
@@ -141,7 +180,7 @@ defmodule DcompWeb.GameLive.Show do
           id="back-to-games"
           class="inline-flex items-center gap-1 text-sm text-base-content/60 transition hover:text-primary"
         >
-          <.icon name="hero-arrow-left" class="size-4" /> All games
+          <.icon name="hero-arrow-left" class="size-4" /> {gettext("All games")}
         </.link>
         <div class="flex flex-wrap items-end justify-between gap-3">
           <h1 id="game-title" class="text-3xl font-bold tracking-tight">{@game.name}</h1>
@@ -152,7 +191,7 @@ defmodule DcompWeb.GameLive.Show do
               phx-click={show("#contribute-modal")}
               class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 font-medium text-primary-content transition hover:opacity-90"
             >
-              <.icon name="hero-command-line" class="size-4" /> Contribute
+              <.icon name="hero-command-line" class="size-4" /> {gettext("Contribute")}
             </button>
             <a
               href={@game.repo_url}
@@ -161,11 +200,11 @@ defmodule DcompWeb.GameLive.Show do
               id="repo-link"
               class="inline-flex items-center gap-1 transition hover:text-primary"
             >
-              <.icon name="hero-code-bracket" class="size-4" /> Repository
+              <.icon name="hero-code-bracket" class="size-4" /> {gettext("Repository")}
             </a>
             <span id="last-synced" class="inline-flex items-center gap-1">
               <.icon name="hero-arrow-path" class="size-4" />
-              Synced {time_ago(@game.last_synced_at, @now)}
+              {gettext("Synced %{when}", when: time_ago(@game.last_synced_at, @now))}
             </span>
           </div>
         </div>
@@ -178,20 +217,22 @@ defmodule DcompWeb.GameLive.Show do
         class="flex items-start gap-2 rounded-xl border border-warning/50 bg-warning/10 px-4 py-3 text-sm"
       >
         <.icon name="hero-exclamation-triangle" class="mt-0.5 size-4 shrink-0 text-warning" />
-        <span>The last sync failed, so this data may be out of date.</span>
+        <span>{gettext("The last sync failed, so this data may be out of date.")}</span>
       </div>
 
       <div class="grid gap-6 lg:grid-cols-3">
-        <.panel id="puzzle-panel" title="The puzzle" class="lg:col-span-2">
+        <.panel id="puzzle-panel" title={gettext("The puzzle")} class="lg:col-span-2">
           <:aside>
             <div
               id="layout-toggle"
               role="group"
-              aria-label="Piece layout"
+              aria-label={gettext("Piece layout")}
               class="inline-flex rounded-lg border border-base-300 bg-base-100 p-0.5 text-xs"
             >
               <button
-                :for={{mode, label} <- [grid: "Equal pieces", size: "By function size"]}
+                :for={
+                  {mode, label} <- [grid: gettext("Equal pieces"), size: gettext("By function size")]
+                }
                 id={"layout-#{mode}"}
                 type="button"
                 phx-click="set-layout"
@@ -211,6 +252,7 @@ defmodule DcompWeb.GameLive.Show do
           </:aside>
           <div
             id="puzzle"
+            data-i18n={Jason.encode!(puzzle_i18n(@game))}
             phx-hook=".Puzzle"
             phx-update="ignore"
             class="relative w-full overflow-visible"
@@ -218,7 +260,14 @@ defmodule DcompWeb.GameLive.Show do
             <canvas
               id="puzzle-canvas"
               class="block w-full rounded-xl"
-              aria-label={"#{@game.name} puzzle: #{@m.totals.solved.count} of #{@m.totals.all.count} functions solved, #{@m.totals.claimed.count} claimed"}
+              aria-label={
+                gettext("%{game} puzzle: %{solved} of %{total} functions solved, %{claimed} claimed",
+                  game: @game.name,
+                  solved: @m.totals.solved.count,
+                  total: @m.totals.all.count,
+                  claimed: @m.totals.claimed.count
+                )
+              }
             ></canvas>
             <div
               id="puzzle-tip"
@@ -232,7 +281,7 @@ defmodule DcompWeb.GameLive.Show do
             class="mt-3 text-xs text-base-content/70"
           >
             <summary class="cursor-pointer select-none hover:text-primary">
-              View all functions as a list
+              {gettext("View all functions as a list")}
             </summary>
             <div id="puzzle-list-body" phx-update="ignore" class="mt-2 max-h-96 overflow-auto"></div>
           </details>
@@ -241,13 +290,13 @@ defmodule DcompWeb.GameLive.Show do
             class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-base-content/70"
           >
             <li class="flex items-center gap-1.5">
-              <span class="size-3 rounded-sm bg-base-300"></span> Unclaimed
+              <span class="size-3 rounded-sm bg-base-300"></span> {gettext("Unclaimed")}
             </li>
             <li class="flex items-center gap-1.5">
-              <span class="size-3 rounded-sm bg-warning/60"></span> Claimed
+              <span class="size-3 rounded-sm bg-warning/60"></span> {gettext("Claimed")}
             </li>
             <li class="flex items-center gap-1.5">
-              <span class="size-3 rounded-sm bg-primary"></span> Solved
+              <span class="size-3 rounded-sm bg-primary"></span> {gettext("Solved")}
             </li>
           </ul>
         </.panel>
@@ -258,42 +307,42 @@ defmodule DcompWeb.GameLive.Show do
             class="rounded-2xl border border-base-300 bg-gradient-to-br from-primary/15 to-transparent p-6"
           >
             <div class="text-xs font-semibold uppercase tracking-wide text-base-content/60">
-              Complete
+              {gettext("Complete")}
             </div>
             <div class="mt-1 text-6xl font-bold tracking-tight">{percent(@m.completion_pct)}</div>
             <.progress_bar value={@m.completion_pct} class="mt-4" />
             <div class="mt-2 text-xs text-base-content/60">
-              by bytes · {percent(@m.completion_pct_count)} by function count
+              {gettext("by bytes · %{pct} by function count", pct: percent(@m.completion_pct_count))}
             </div>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <.stat
               id="stat-solved"
               icon="hero-check-circle"
-              label="Solved"
+              label={gettext("Solved")}
               value={number(@m.totals.solved.count)}
               sub={bytes(@m.totals.solved.bytes)}
             />
             <.stat
               id="stat-claimed"
               icon="hero-hand-raised"
-              label="Claimed"
+              label={gettext("Claimed")}
               value={number(@m.totals.claimed.count)}
               sub={bytes(@m.totals.claimed.bytes)}
             />
             <.stat
               id="stat-unclaimed"
               icon="hero-squares-2x2"
-              label="Unclaimed"
+              label={gettext("Unclaimed")}
               value={number(@m.totals.unclaimed.count)}
               sub={bytes(@m.totals.unclaimed.bytes)}
             />
             <.stat
               id="stat-remaining"
               icon="hero-flag"
-              label="Remaining"
+              label={gettext("Remaining")}
               value={number(@m.totals.remaining.count)}
-              sub={"of #{number(@m.totals.all.count)} total"}
+              sub={gettext("of %{n} total", n: number(@m.totals.all.count))}
             />
           </div>
         </div>
@@ -303,50 +352,51 @@ defmodule DcompWeb.GameLive.Show do
         <.stat
           id="stat-pace"
           icon="hero-bolt"
-          label="Pace"
-          value={"#{Float.round(@m.velocity.solves_per_day, 1)}/day"}
-          sub={"#{@m.velocity.solves_7d} solved in 7 days"}
+          label={gettext("Pace")}
+          value={gettext("%{n}/day", n: decimal(@m.velocity.solves_per_day))}
+          sub={gettext("%{n} solved in 7 days", n: @m.velocity.solves_7d)}
         />
         <.stat
           id="stat-eta"
           icon="hero-calendar-days"
-          label="Est. finish"
+          label={gettext("Est. finish")}
           value={eta(@m.velocity.eta_days)}
-          sub="at the 30-day pace"
+          sub={gettext("at the 30-day pace")}
         />
         <.stat
           id="stat-median"
           icon="hero-clock"
-          label="Claim to solve"
+          label={gettext("Claim to solve")}
           value={duration(@m.median_claim_to_solve_s)}
-          sub="median"
+          sub={gettext("median")}
         />
         <.stat
           id="stat-conversion"
           icon="hero-arrow-trending-up"
-          label="Claims solved"
+          label={gettext("Claims solved")}
           value={if @m.conversion_rate, do: percent(@m.conversion_rate * 100), else: "–"}
-          sub="of all claims"
+          sub={gettext("of all claims")}
         />
         <.stat
           id="stat-expired"
           icon="hero-clock"
-          label="Expired"
+          label={gettext("Expired")}
           value={number(@m.expired)}
-          sub="claims timed out"
+          sub={gettext("claims timed out")}
         />
         <.stat
           id="stat-released"
           icon="hero-arrow-uturn-left"
-          label="Released"
+          label={gettext("Released")}
           value={number(@m.released)}
-          sub="given back"
+          sub={gettext("given back")}
         />
       </div>
 
-      <.panel id="burn-up-panel" title="Functions solved over time">
+      <.panel id="burn-up-panel" title={gettext("Functions solved over time")}>
         <div
           id="burn-up"
+          data-i18n={Jason.encode!(burn_up_i18n())}
           phx-hook=".BurnUp"
           phx-update="ignore"
           class="relative w-full text-base-content"
@@ -357,13 +407,15 @@ defmodule DcompWeb.GameLive.Show do
           phx-mounted={JS.ignore_attributes("open")}
           class="mt-3 text-xs text-base-content/70"
         >
-          <summary class="cursor-pointer select-none hover:text-primary">View as table</summary>
+          <summary class="cursor-pointer select-none hover:text-primary">
+            {gettext("View as table")}
+          </summary>
           <table id="burn-up-table" class="mt-2 w-full text-left">
             <thead>
               <tr class="text-base-content/50">
-                <th class="py-1 font-medium">Date</th>
-                <th class="py-1 text-right font-medium">Solved (total)</th>
-                <th class="py-1 text-right font-medium">Bytes</th>
+                <th class="py-1 font-medium">{gettext("Date")}</th>
+                <th class="py-1 text-right font-medium">{gettext("Solved (total)")}</th>
+                <th class="py-1 text-right font-medium">{gettext("Bytes")}</th>
               </tr>
             </thead>
             <tbody>
@@ -378,7 +430,7 @@ defmodule DcompWeb.GameLive.Show do
       </.panel>
 
       <div class="grid gap-6 lg:grid-cols-2">
-        <.panel id="leaderboard-panel" title="Ranking">
+        <.panel id="leaderboard-panel" title={gettext("Ranking")}>
           <ol
             id="leaderboard"
             phx-update="stream"
@@ -388,7 +440,7 @@ defmodule DcompWeb.GameLive.Show do
               id="leaderboard-empty"
               class="hidden py-6 text-center text-sm text-base-content/60 only:block"
             >
-              Nobody has solved a function yet.
+              {gettext("Nobody has solved a function yet.")}
             </li>
             <li
               :for={{id, row} <- @streams.leaderboard}
@@ -404,13 +456,13 @@ defmodule DcompWeb.GameLive.Show do
           </ol>
         </.panel>
 
-        <.panel id="claims-panel" title="Active claims">
+        <.panel id="claims-panel" title={gettext("Active claims")}>
           <ul id="claims" phx-update="stream" class="divide-y divide-base-300">
             <li
               id="claims-empty"
               class="hidden py-6 text-center text-sm text-base-content/60 only:block"
             >
-              No open claims.
+              {gettext("No open claims.")}
             </li>
             <li
               :for={{id, c} <- @streams.claims}
@@ -432,13 +484,13 @@ defmodule DcompWeb.GameLive.Show do
           </ul>
         </.panel>
 
-        <.panel id="remaining-panel" title="Biggest functions left">
+        <.panel id="remaining-panel" title={gettext("Biggest functions left")}>
           <ul id="remaining" phx-update="stream" class="divide-y divide-base-300">
             <li
               id="remaining-empty"
               class="hidden py-6 text-center text-sm text-base-content/60 only:block"
             >
-              Everything is solved.
+              {gettext("Everything is solved.")}
             </li>
             <li
               :for={{id, f} <- @streams.remaining}
@@ -454,13 +506,13 @@ defmodule DcompWeb.GameLive.Show do
                   else: "bg-base-300 text-base-content/70"
                 )
               ]}>
-                {f.status}
+                {status_label(f.status)}
               </span>
             </li>
           </ul>
         </.panel>
 
-        <.panel id="sizes-panel" title="Unsolved by size">
+        <.panel id="sizes-panel" title={gettext("Unsolved by size")}>
           <ul id="sizes" class="space-y-2.5">
             <li
               :for={b <- @m.size_distribution}
@@ -478,13 +530,13 @@ defmodule DcompWeb.GameLive.Show do
           </ul>
         </.panel>
 
-        <.panel id="activity-panel" title="Recent activity">
+        <.panel id="activity-panel" title={gettext("Recent activity")}>
           <ul id="activity" phx-update="stream" class="divide-y divide-base-300">
             <li
               id="activity-empty"
               class="hidden py-6 text-center text-sm text-base-content/60 only:block"
             >
-              Nothing has happened yet.
+              {gettext("Nothing has happened yet.")}
             </li>
             <li
               :for={{id, e} <- @streams.activity}
@@ -504,13 +556,13 @@ defmodule DcompWeb.GameLive.Show do
           </ul>
         </.panel>
 
-        <.panel id="strikes-panel" title="Strikes">
+        <.panel id="strikes-panel" title={gettext("Strikes")}>
           <ul id="strikes" phx-update="stream" class="divide-y divide-base-300">
             <li
               id="strikes-empty"
               class="hidden py-6 text-center text-sm text-base-content/60 only:block"
             >
-              No expired claims.
+              {gettext("No expired claims.")}
             </li>
             <li
               :for={{id, s} <- @streams.strikes}
@@ -523,7 +575,7 @@ defmodule DcompWeb.GameLive.Show do
                   :if={s.banned?}
                   class="rounded-full bg-error/15 px-2 py-0.5 text-xs font-medium text-error"
                 >
-                  can't claim
+                  {gettext("can't claim")}
                 </span>
                 <span class="tabular-nums text-base-content/70">
                   {s.count}{if @game.max_strikes, do: " / #{@game.max_strikes}"}
@@ -537,7 +589,6 @@ defmodule DcompWeb.GameLive.Show do
       <script :type={Phoenix.LiveView.ColocatedHook} name=".Puzzle">
         // Draws every function as a piece of the game's picture: grey when unclaimed, tinted when
         // claimed, showing its slice of the picture when solved.
-        const NAMES = ["Unclaimed", "Claimed", "Solved"]
         const ANIM_MS = 1200
 
         // Squarified treemap: [{i, v}] sorted by v desc -> [{i, x, y, w, h}] filling w x h.
@@ -579,6 +630,7 @@ defmodule DcompWeb.GameLive.Show do
 
         export default {
           mounted() {
+            this.t = JSON.parse(this.el.dataset.i18n)
             this.canvas = this.el.querySelector("canvas")
             this.tip = this.el.querySelector("#puzzle-tip")
             this.ctx = this.canvas.getContext("2d")
@@ -699,10 +751,10 @@ defmodule DcompWeb.GameLive.Show do
             table.className = "w-full text-left"
             const cap = document.createElement("caption")
             cap.className = "sr-only"
-            cap.textContent = `${this.name} functions`
+            cap.textContent = this.t.caption
             table.append(cap)
             const hr = table.createTHead().insertRow()
-            for (const t of ["Address", "Size", "Status", "Contributor"]) {
+            for (const t of this.t.headers) {
               const th = document.createElement("th")
               th.scope = "col"
               th.className = "sticky top-0 bg-base-100 py-1 pr-3 font-medium text-base-content/50"
@@ -715,7 +767,7 @@ defmodule DcompWeb.GameLive.Show do
               const p = this.pieces[i]
               const tr = tb.insertRow()
               const who = p[3] == null ? "" : this.people[p[3]].login
-              for (const v of [p[0], p[1] + " B", NAMES[p[2]], who]) {
+              for (const v of [p[0], p[1] + " B", this.t.names[p[2]], who]) {
                 const td = tr.insertCell()
                 td.className = "py-0.5 pr-3"
                 td.textContent = v
@@ -726,7 +778,8 @@ defmodule DcompWeb.GameLive.Show do
               const b = document.createElement("button")
               b.type = "button"
               b.className = "mt-2 text-primary underline"
-              b.textContent = `Show more (${n} of ${this.pieces.length})`
+              const fmt = new Intl.NumberFormat(document.documentElement.lang)
+              b.textContent = this.t.showMore.replace("{shown}", fmt.format(n)).replace("{total}", fmt.format(this.pieces.length))
               b.addEventListener("click", () => { this.listLimit += 200; this.fillList() })
               nodes.push(b)
             }
@@ -863,7 +916,7 @@ defmodule DcompWeb.GameLive.Show do
             }
             this.tip.replaceChildren()
             line("func_" + addr, "font-mono font-semibold")
-            line(size + " bytes · " + NAMES[status], "text-base-content/70")
+            line(this.t.bytes.replace("{n}", size) + " · " + this.t.names[status], "text-base-content/70")
             if (who != null) {
               const person = this.people[who]
               const row = document.createElement("div")
@@ -877,7 +930,7 @@ defmodule DcompWeb.GameLive.Show do
               row.append(img, name)
               this.tip.appendChild(row)
             } else if (status === 2) {
-              line("Solved by an unknown contributor", "text-base-content/70")
+              line(this.t.unknown, "text-base-content/70")
             }
           },
         }
@@ -905,6 +958,7 @@ defmodule DcompWeb.GameLive.Show do
 
         export default {
           mounted() {
+            this.t = JSON.parse(this.el.dataset.i18n)
             this.points = []
             this.tip = document.createElement("div")
             this.tip.className =
@@ -926,7 +980,7 @@ defmodule DcompWeb.GameLive.Show do
             if (!this.points.length) {
               const p = document.createElement("p")
               p.className = "py-10 text-center text-sm text-base-content/60"
-              p.textContent = "No solves yet."
+              p.textContent = this.t.none
               this.el.appendChild(p)
               return
             }
@@ -939,7 +993,7 @@ defmodule DcompWeb.GameLive.Show do
             const X = t => M.l + (t1 === t0 ? iw / 2 : ((t - t0) / (t1 - t0)) * iw)
             const Y = v => M.t + ih - (v / ymax) * ih
 
-            const root = svg("svg", {width: W, height: HEIGHT, viewBox: `0 0 ${W} ${HEIGHT}`, role: "img", "aria-label": "Functions solved over time"})
+            const root = svg("svg", {width: W, height: HEIGHT, viewBox: `0 0 ${W} ${HEIGHT}`, role: "img", "aria-label": this.t.title})
             const muted = {fill: "currentColor", "fill-opacity": 0.6, "font-size": 11}
 
             for (let i = 0; i <= 4; i++) {
@@ -972,8 +1026,8 @@ defmodule DcompWeb.GameLive.Show do
               dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("visibility", "visible")
               this.tip.replaceChildren()
               const d = document.createElement("div"); d.className = "font-semibold"; d.textContent = day(best[0])
-              const n = document.createElement("div"); n.textContent = best[1] + " functions solved"
-              const b = document.createElement("div"); b.className = "text-base-content/60"; b.textContent = best[2] + " bytes"
+              const n = document.createElement("div"); n.textContent = this.t.solved.replace("{n}", best[1])
+              const b = document.createElement("div"); b.className = "text-base-content/60"; b.textContent = this.t.bytes.replace("{n}", best[2])
               this.tip.append(d, n, b)
               this.tip.classList.remove("hidden")
               const tw = this.tip.offsetWidth
@@ -1013,13 +1067,13 @@ defmodule DcompWeb.GameLive.Show do
             <div class="flex items-center justify-between gap-3 border-b border-base-300 px-5 py-3">
               <h2 id="contribute-title" class="flex items-center gap-2 font-semibold">
                 <.icon name="hero-command-line" class="size-5 text-primary" />
-                How to contribute to {@game.name}
+                {gettext("How to contribute to %{game}", game: @game.name)}
               </h2>
               <button
                 id="contribute-close"
                 type="button"
                 phx-click={hide("#contribute-modal")}
-                aria-label="Close"
+                aria-label={gettext("Close")}
                 class="rounded-lg p-1.5 text-base-content/60 transition hover:bg-base-200 hover:text-base-content"
               >
                 <.icon name="hero-x-mark" class="size-5" />
@@ -1028,36 +1082,40 @@ defmodule DcompWeb.GameLive.Show do
             <div class="overflow-y-auto px-5 py-4 text-sm text-base-content/80">
               <ol class="list-decimal space-y-3 pl-5 text-base-content/80">
                 <li>
-                  Install the
+                  {gettext("Install the")}
                   <a
                     href="https://cli.github.com"
                     target="_blank"
                     rel="noopener"
                     class="text-primary underline"
                   >GitHub CLI</a>
-                  and an AI coding agent of your choice, such as <a
+                  {gettext("and an AI coding agent of your choice, such as")}
+                  <a
                     href="https://claude.com/claude-code"
                     target="_blank"
                     rel="noopener"
                     class="text-primary underline"
-                  >Claude Code</a>, Codex or Cursor.
+                  >Claude Code</a>{gettext(", Codex or Cursor.")}
                   <div id="install-commands" class="mt-2 space-y-2">
                     <div>
-                      GitHub CLI on macOS: <.code_block id="install-gh-brew" text="brew install gh" />
+                      {gettext("GitHub CLI on macOS:")}
+                      <.code_block id="install-gh-brew" text="brew install gh" />
                     </div>
                     <div>
-                      GitHub CLI on Debian/Ubuntu (<a
+                      {gettext("GitHub CLI on Debian/Ubuntu")} (<a
                         href="https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"
                         target="_blank"
                         rel="noopener"
                         class="text-primary underline"
-                      >more info</a>): <.code_block id="install-gh-apt" text="sudo apt install gh" />
+                      >{gettext("more info")}</a>):
+                      <.code_block id="install-gh-apt" text="sudo apt install gh" />
                     </div>
                     <div>
-                      Then log in: <.code_block id="gh-auth-login" text="gh auth login" />
+                      {gettext("Then log in:")}
+                      <.code_block id="gh-auth-login" text="gh auth login" />
                     </div>
                     <div>
-                      Claude Code, for example:
+                      {gettext("Claude Code, for example:")}
                       <.code_block
                         id="install-claude"
                         text="curl -fsSL https://claude.ai/install.sh | bash"
@@ -1066,25 +1124,28 @@ defmodule DcompWeb.GameLive.Show do
                   </div>
                 </li>
                 <li>
-                  Fork and clone <a
+                  {gettext("Fork and clone")}
+                  <a
                     href={@game.repo_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     class="text-primary underline"
-                  >
-          {repo_slug(@game) || @game.repo_url}
-        </a>:
+                  >{repo_slug(@game) || @game.repo_url}</a>:
                   <.code_block id="contribute-clone" text={clone_command(@game)} />
                 </li>
                 <li>
-                  Follow the setup in <code class="rounded bg-base-300 px-1.5 py-0.5">AGENTS.md</code>
-                  (compiler tools and your own legally obtained ROM as <code class="rounded bg-base-300 px-1.5 py-0.5">baserom.gba</code>).
+                  {gettext("Follow the setup in")}
+                  <code class="rounded bg-base-300 px-1.5 py-0.5">AGENTS.md</code>
+                  ({gettext("compiler tools and your own legally obtained ROM as")}
+                  <code class="rounded bg-base-300 px-1.5 py-0.5">baserom.gba</code>).
                   <div :if={@game.rom_sha1}>
-                    Its SHA1 must be: <.code_block id="contribute-rom-sha1" text={@game.rom_sha1} />
+                    {gettext("Its SHA1 must be:")}
+                    <.code_block id="contribute-rom-sha1" text={@game.rom_sha1} />
                   </div>
                 </li>
                 <li>
-                  Start your agent in the clone and tell it:
+                  {gettext("Start your agent in the clone and tell it:")}
+                  <%!-- Kept in English: it points the agent at the English AGENTS.md. --%>
                   <.code_block
                     id="contribute-prompt"
                     text={"Follow AGENTS.md and contribute to this decomp: claim a function, match it, and open the pull requests against the #{@game.branch} branch."}

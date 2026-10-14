@@ -17,12 +17,12 @@ defmodule DcompWeb.GameComponents do
         type="button"
         phx-hook=".CopyButton"
         data-target={"##{@id}"}
-        aria-label="Copy to clipboard"
+        aria-label={gettext("Copy to clipboard")}
         class="group/copy absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-md bg-base-100/80 px-2 py-1 font-sans text-base-content/70 transition hover:bg-base-100 hover:text-primary"
       >
         <.icon name="hero-clipboard-document" class="size-3.5" />
-        <span class="group-data-[copied]/copy:hidden">Copy</span>
-        <span class="hidden group-data-[copied]/copy:inline">Copied</span>
+        <span class="group-data-[copied]/copy:hidden">{gettext("Copy")}</span>
+        <span class="hidden group-data-[copied]/copy:inline">{gettext("Copied")}</span>
       </button>
       <script :type={Phoenix.LiveView.ColocatedHook} name=".CopyButton">
         export default {
@@ -54,7 +54,7 @@ defmodule DcompWeb.GameComponents do
         "inline-flex items-center justify-center rounded-full bg-base-300 text-base-content/50",
         @size
       ]}
-      title="Unknown contributor"
+      title={gettext("Unknown contributor")}
     >
       <.icon name="hero-user-solid" class="size-3/5" />
     </span>
@@ -80,7 +80,7 @@ defmodule DcompWeb.GameComponents do
   def person(%{login: nil} = assigns) do
     ~H"""
     <span class="inline-flex items-center gap-2 text-base-content/60">
-      <.avatar size={@size} /> Unknown
+      <.avatar size={@size} /> {gettext("Unknown")}
     </span>
     """
   end
@@ -193,44 +193,59 @@ defmodule DcompWeb.GameComponents do
   def image_url(%{image_path: nil}), do: nil
   def image_url(%{image_path: name}), do: "/uploads/" <> name
 
+  # Argentine Spanish writes 1.234,5 where English writes 1,234.5.
+  defp separators do
+    if Gettext.get_locale(DcompWeb.Gettext) == "es_AR", do: {".", ","}, else: {",", "."}
+  end
+
+  def decimal(x) do
+    {_, point} = separators()
+    x |> Kernel.*(1.0) |> :erlang.float_to_binary(decimals: 1) |> String.replace(".", point)
+  end
+
   def number(n) when is_integer(n) do
+    {thousands, _} = separators()
+
     n
     |> Integer.to_string()
     |> String.reverse()
-    |> String.replace(~r/(\d{3})(?=\d)/, "\\1,")
+    |> String.replace(~r/(\d{3})(?=\d)/, "\\1" <> thousands)
     |> String.reverse()
   end
 
   def number(n) when is_float(n), do: n |> round() |> number()
   def number(nil), do: "–"
 
-  def bytes(n) when n >= 1_048_576, do: "#{Float.round(n / 1_048_576, 1)} MiB"
-  def bytes(n) when n >= 1024, do: "#{Float.round(n / 1024, 1)} KiB"
+  def bytes(n) when n >= 1_048_576, do: "#{decimal(Float.round(n / 1_048_576, 1))} MiB"
+  def bytes(n) when n >= 1024, do: "#{decimal(Float.round(n / 1024, 1))} KiB"
   def bytes(n), do: "#{n} B"
 
-  def percent(p), do: "#{:erlang.float_to_binary(p * 1.0, decimals: 1)}%"
+  def percent(p), do: "#{decimal(p)}%"
 
   def duration(nil), do: "–"
   def duration(s) when s < 3600, do: "#{max(round(s / 60), 1)} min"
-  def duration(s) when s < 172_800, do: "#{Float.round(s / 3600, 1)} h"
-  def duration(s), do: "#{Float.round(s / 86_400, 1)} days"
+  def duration(s) when s < 172_800, do: "#{decimal(Float.round(s / 3600, 1))} h"
+  def duration(s), do: days(Float.round(s / 86_400, 1))
 
   def eta(nil), do: "–"
-  def eta(days) when days < 1, do: "< 1 day"
-  def eta(days) when days < 120, do: "#{round(days)} days"
-  def eta(days), do: "#{Float.round(days / 30, 1)} months"
+  def eta(days) when days < 1, do: gettext("< 1 day")
+  def eta(days) when days < 120, do: days(round(days))
+  def eta(days), do: gettext("%{n} months", n: decimal(Float.round(days / 30, 1)))
+
+  defp days(n) when is_integer(n), do: ngettext("%{n} day", "%{n} days", n, n: n)
+  defp days(n), do: gettext("%{n} days", n: decimal(n))
 
   @doc "Coarse relative time (`5 min ago`); the page re-renders on every sync."
-  def time_ago(nil, _now), do: "never"
+  def time_ago(nil, _now), do: gettext("never")
 
   def time_ago(%DateTime{} = at, now) do
     s = DateTime.diff(now, at)
 
     cond do
-      s < 60 -> "just now"
-      s < 3600 -> "#{div(s, 60)} min ago"
-      s < 86_400 -> "#{div(s, 3600)} h ago"
-      true -> "#{div(s, 86_400)} days ago"
+      s < 60 -> gettext("just now")
+      s < 3600 -> gettext("%{n} min ago", n: div(s, 60))
+      s < 86_400 -> gettext("%{n} h ago", n: div(s, 3600))
+      true -> ngettext("%{n} day ago", "%{n} days ago", div(s, 86_400), n: div(s, 86_400))
     end
   end
 
@@ -238,16 +253,22 @@ defmodule DcompWeb.GameComponents do
 
   def time_left(%DateTime{} = at, now) do
     case DateTime.diff(at, now) do
-      s when s <= 0 -> "expired"
-      s when s < 3600 -> "#{div(s, 60)} min left"
-      s -> "#{div(s, 3600)} h left"
+      s when s <= 0 -> gettext("expired")
+      s when s < 3600 -> gettext("%{n} min left", n: div(s, 60))
+      s -> gettext("%{n} h left", n: div(s, 3600))
     end
   end
 
-  def event_label(:claim), do: "claimed"
-  def event_label(:solve), do: "solved"
-  def event_label(:release), do: "released"
-  def event_label(:expire), do: "claim expired"
+  # Verbs in the activity feed ("ana claimed ..."); the context keeps them apart from the status
+  # adjectives below, which Spanish writes differently.
+  def event_label(:claim), do: pgettext("activity", "claimed")
+  def event_label(:solve), do: pgettext("activity", "solved")
+  def event_label(:release), do: pgettext("activity", "released")
+  def event_label(:expire), do: pgettext("activity", "claim expired")
+
+  def status_label(:unclaimed), do: pgettext("status", "unclaimed")
+  def status_label(:claimed), do: pgettext("status", "claimed")
+  def status_label(:solved), do: pgettext("status", "solved")
 
   def event_icon(:claim), do: "hero-hand-raised"
   def event_icon(:solve), do: "hero-check-circle"
