@@ -104,6 +104,7 @@ defmodule DcompWeb.GameLive.Show do
     %{
       pieces: pieces,
       people: people,
+      commit_url: commit_url(game),
       mode: Atom.to_string(mode),
       image: image_url(game),
       name: game.name
@@ -134,6 +135,11 @@ defmodule DcompWeb.GameLive.Show do
     end
   end
 
+  # Prefix to append a sha to; nil for non-GitHub hosts.
+  defp commit_url(game) do
+    if slug = repo_slug(game), do: "https://github.com/#{slug}/commit/"
+  end
+
   defp clone_command(game) do
     case repo_slug(game) do
       nil -> "git clone #{shell_quote(game.repo_url)}"
@@ -159,6 +165,7 @@ defmodule DcompWeb.GameLive.Show do
       ],
       caption: gettext("%{game} functions", game: game.name),
       headers: [gettext("Address"), gettext("Size"), gettext("Status"), gettext("Contributor")],
+      openCommit: gettext("click to open commit"),
       showMore: gettext("Show more (%{shown} of %{total})", shown: "{shown}", total: "{total}"),
       bytes: gettext("%{n} bytes", n: "{n}"),
       unknown: gettext("Solved by an unknown contributor")
@@ -603,7 +610,7 @@ defmodule DcompWeb.GameLive.Show do
               </span>
               <a
                 :if={(e.type == :solve and e.sha) && repo_slug(@game)}
-                href={"https://github.com/#{repo_slug(@game)}/commit/#{e.sha}"}
+                href={commit_url(@game) <> e.sha}
                 target="_blank"
                 rel="noopener noreferrer"
                 title={gettext("View the commit")}
@@ -718,6 +725,10 @@ defmodule DcompWeb.GameLive.Show do
 
             this.canvas.addEventListener("mousemove", e => this.onMove(e))
             this.canvas.addEventListener("mouseleave", () => this.setHover(null))
+            this.canvas.addEventListener("click", () => {
+              const sha = this.hover && this.pieces[this.hover.i][4]
+              if (sha && this.commitUrl) window.open(this.commitUrl + sha, "_blank", "noopener")
+            })
             this.ro = new ResizeObserver(() => this.layout())
             this.ro.observe(this.el)
             this.theme = new MutationObserver(() => this.draw())
@@ -852,6 +863,7 @@ defmodule DcompWeb.GameLive.Show do
           setData(d) {
             this.pieces = d.pieces
             this.people = d.people
+            this.commitUrl = d.commit_url
             this.mode = d.mode
             this.name = d.name
             this.queueAnims()
@@ -995,6 +1007,7 @@ defmodule DcompWeb.GameLive.Show do
             } else if (status === 2) {
               line(this.t.unknown, "text-base-content/70")
             }
+            if (p[4] && this.commitUrl) line(p[4].slice(0, 7) + " · " + this.t.openCommit, "font-mono text-xs text-primary")
           },
         }
       </script>

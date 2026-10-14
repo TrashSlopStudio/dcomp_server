@@ -71,9 +71,9 @@ defmodule DcompWeb.GameLiveTest do
       assert_reply view, %{pieces: pieces, people: people, mode: "size", image: nil}
       assert length(pieces) == 4
       assert ["ana"] = Enum.map(people, & &1.login)
-      # [addr, size, status (2 = solved), person index]
-      assert ["08000100", 100, 2, 0] in pieces
-      assert ["08000200", 200, 2, nil] in pieces
+      # [addr, size, status (2 = solved), person index, solve sha]
+      assert Enum.any?(pieces, &match?(["08000100", 100, 2, 0, _], &1))
+      assert Enum.any?(pieces, &match?(["08000200", 200, 2, nil, _], &1))
 
       render_hook(view, "burnup-ready", %{})
       assert_reply view, %{points: [[_, 1, 100], [_, 2, 300]]}

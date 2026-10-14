@@ -52,7 +52,7 @@ defmodule Dcomp.Decomp.Metrics do
   def revealed_pct(metrics, :grid), do: metrics.completion_pct_count
 
   @doc """
-  Every function as `[addr, size, status, person]` (status 0 unclaimed, 1 claimed, 2 solved;
+  Every function as `[addr, size, status, person, solve_sha]` (status 0 unclaimed, 1 claimed, 2 solved;
   person is an index into the returned people list, or `nil`) for drawing the puzzle.
   """
   def puzzle_pieces(%Game{} = game) do
@@ -62,17 +62,17 @@ defmodule Dcomp.Decomp.Metrics do
         on: c.id == coalesce(f.solved_by_id, f.claimed_by_id),
         where: f.game_id == ^game.id,
         order_by: f.addr,
-        select: {f.addr, f.size, f.status, c.login, c.avatar_url}
+        select: {f.addr, f.size, f.status, c.login, c.avatar_url, f.solve_sha}
       )
       |> Repo.all()
 
     people = rows |> Enum.map(&elem(&1, 3)) |> Enum.reject(&is_nil/1) |> Enum.uniq()
     index = people |> Enum.with_index() |> Map.new()
-    avatars = for {_, _, _, l, a} <- rows, l, into: %{}, do: {l, a}
+    avatars = for {_, _, _, l, a, _} <- rows, l, into: %{}, do: {l, a}
 
     pieces =
-      for {addr, size, status, login, _} <- rows do
-        [addr, size, status_code(status), login && index[login]]
+      for {addr, size, status, login, _, sha} <- rows do
+        [addr, size, status_code(status), login && index[login], sha]
       end
 
     {pieces, Enum.map(people, &%{login: &1, avatar: avatars[&1]})}
