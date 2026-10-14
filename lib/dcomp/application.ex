@@ -12,12 +12,13 @@ defmodule Dcomp.Application do
       Dcomp.Repo,
       {Redix, host: redis_host(), name: :redix, password: redis_pass()},
       {DNSCluster, query: Application.get_env(:dcomp, :dns_cluster_query) || :ignore},
-      {Phoenix.PubSub, name: Dcomp.PubSub},
-      # Start a worker by calling: Dcomp.Worker.start_link(arg)
-      # {Dcomp.Worker, arg},
-      # Start to serve requests, typically the last entry
-      DcompWeb.Endpoint
+      {Phoenix.PubSub, name: Dcomp.PubSub}
     ]
+
+    children =
+      children ++
+        if(Application.get_env(:dcomp, :start_syncer), do: [Dcomp.Decomp.Syncer], else: []) ++
+        [DcompWeb.Endpoint]
 
     # See https://elixir.hexdocs.pm/Supervisor.html
     # for other strategies and supported options

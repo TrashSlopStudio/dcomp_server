@@ -27,6 +27,33 @@ defmodule Dcomp.Accounts do
   end
 
   @doc """
+  Promotes the user with the given email to admin.
+
+  Returns `{:error, :not_found}` if nobody registered with that email.
+  """
+  def make_admin(email) when is_binary(email) do
+    case get_user_by_email(email) do
+      nil -> {:error, :not_found}
+      user -> user |> Ecto.Changeset.change(role: :admin) |> Repo.update()
+    end
+  end
+
+  def list_users, do: Repo.all(from u in User, order_by: u.email)
+
+  @doc """
+  Sets a user's role. The last admin can't be demoted, so the site can't lock itself out.
+  """
+  def set_role(%User{} = user, role) when role in [:user, :admin] do
+    if role == :user and user.role == :admin and admin_count() <= 1 do
+      {:error, :last_admin}
+    else
+      user |> Ecto.Changeset.change(role: role) |> Repo.update()
+    end
+  end
+
+  defp admin_count, do: Repo.aggregate(from(u in User, where: u.role == :admin), :count)
+
+  @doc """
   Gets a user by email and password.
 
   ## Examples

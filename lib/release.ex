@@ -67,6 +67,24 @@ defmodule Dcomp.Release do
     end
   end
 
+  @doc """
+  Promotes an already registered user to admin:
+
+      bin/dcomp eval 'Dcomp.Release.make_admin("me@example.com")'
+  """
+  def make_admin(email) do
+    :ok = load_app()
+
+    for repo <- repos() do
+      {:ok, result, _apps} =
+        Ecto.Migrator.with_repo(repo, fn _repo -> Dcomp.Accounts.make_admin(email) end)
+
+      Logger.info("make_admin #{email}: #{inspect(result, pretty: true)}")
+    end
+
+    :ok
+  end
+
   defp repos, do: Application.fetch_env!(@app, :ecto_repos)
 
   defp load_app do

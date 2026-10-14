@@ -24,6 +24,14 @@ config :dcomp,
   ecto_repos: [Dcomp.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true]
 
+# Decomp game repos are mirrored here (see Dcomp.Decomp.Mirror); runtime.exs overrides via env.
+config :dcomp,
+  mirror_dir: "priv/mirrors",
+  uploads_path: "priv/static/uploads",
+  # git transports allowed when cloning a game's repo_url
+  git_protocols: ["https"],
+  start_syncer: true
+
 # Configure the endpoint
 config :dcomp, DcompWeb.Endpoint,
   url: [host: "localhost"],

@@ -53,3 +53,7 @@ dump.rdb
 # Local stack data and prod ssh keys
 backup
 .ssh/
+
+# Decomp git mirrors and uploads
+/priv/mirrors/
+/priv/static/uploads/

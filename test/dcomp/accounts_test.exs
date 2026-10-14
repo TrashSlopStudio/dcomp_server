@@ -394,4 +394,34 @@ defmodule Dcomp.AccountsTest do
       refute inspect(%User{password: "123456"}) =~ "password: \"123456\""
     end
   end
+
+  describe "make_admin/1" do
+    test "promotes a registered user" do
+      user = user_fixture()
+      refute User.admin?(user)
+      assert {:ok, admin} = Accounts.make_admin(user.email)
+      assert User.admin?(admin)
+    end
+
+    test "errors for an unknown email" do
+      assert {:error, :not_found} = Accounts.make_admin("nobody@example.com")
+    end
+  end
+
+  describe "set_role/2 and list_users/0" do
+    test "changes roles and lists users by email" do
+      a = user_fixture()
+      b = user_fixture()
+      {:ok, _} = Accounts.make_admin(a.email)
+      assert {:ok, %{role: :admin}} = Accounts.set_role(b, :admin)
+      assert {:ok, %{role: :user}} = Accounts.set_role(b, :user)
+      assert Enum.map(Accounts.list_users(), & &1.id) |> Enum.sort() == Enum.sort([a.id, b.id])
+    end
+
+    test "refuses to demote the last admin" do
+      {:ok, admin} = Accounts.make_admin(user_fixture().email)
+      assert {:error, :last_admin} = Accounts.set_role(admin, :user)
+      assert Repo.reload!(admin).role == :admin
+    end
+  end
 end

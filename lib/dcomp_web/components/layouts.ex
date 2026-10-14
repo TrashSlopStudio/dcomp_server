@@ -31,39 +31,73 @@ defmodule DcompWeb.Layouts do
     default: nil,
     doc: "the current [scope](https://phoenix.hexdocs.pm/scopes.html)"
 
+  attr :wide, :boolean, default: false, doc: "use the full page width (dashboards)"
+
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
-      <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
-        </a>
-      </div>
-      <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-            <a href="https://phoenixframework.org/" class="btn btn-ghost">Website</a>
-          </li>
-          <li>
-            <a href="https://github.com/phoenixframework/phoenix" class="btn btn-ghost">GitHub</a>
-          </li>
-          <li>
-            <.theme_toggle />
-          </li>
-          <li>
-            <a href="https://phoenix.hexdocs.pm/overview.html" class="btn btn-primary">
-              Get Started <span aria-hidden="true">&rarr;</span>
-            </a>
-          </li>
-        </ul>
-      </div>
+    <header class="sticky top-0 z-30 border-b border-base-300 bg-base-100/80 backdrop-blur">
+      <nav
+        id="site-nav"
+        class="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8"
+      >
+        <.link
+          navigate={~p"/"}
+          id="nav-home"
+          class="flex items-center gap-2 text-base font-bold tracking-tight"
+        >
+          <.icon name="hero-puzzle-piece-solid" class="size-6 text-primary" /> dcomp
+        </.link>
+
+        <div class="ml-auto flex items-center gap-1 text-sm sm:gap-2">
+          <%= if @current_scope && @current_scope.user do %>
+            <.link
+              :if={Dcomp.Accounts.User.admin?(@current_scope.user)}
+              navigate={~p"/admin/games"}
+              id="nav-admin"
+              class="rounded-lg px-3 py-1.5 transition hover:bg-base-200"
+            >
+              Admin
+            </.link>
+            <.link
+              href={~p"/users/settings"}
+              id="nav-settings"
+              class="hidden rounded-lg px-3 py-1.5 transition hover:bg-base-200 sm:block"
+            >
+              {@current_scope.user.email}
+            </.link>
+            <.link
+              href={~p"/users/log-out"}
+              method="delete"
+              id="nav-log-out"
+              class="rounded-lg px-3 py-1.5 transition hover:bg-base-200"
+            >
+              Log out
+            </.link>
+          <% else %>
+            <.link
+              href={~p"/users/log-in"}
+              id="nav-log-in"
+              class="rounded-lg px-3 py-1.5 transition hover:bg-base-200"
+            >
+              Log in
+            </.link>
+            <.link
+              href={~p"/users/register"}
+              id="nav-register"
+              class="rounded-lg bg-primary px-3 py-1.5 font-medium text-primary-content transition hover:opacity-90"
+            >
+              Register
+            </.link>
+          <% end %>
+          <.theme_toggle />
+        </div>
+      </nav>
     </header>
 
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl space-y-4">
+    <main class="px-4 py-10 sm:px-6 lg:px-8">
+      <div class={["mx-auto space-y-6", if(@wide, do: "max-w-7xl", else: "max-w-2xl")]}>
         {render_slot(@inner_block)}
       </div>
     </main>

@@ -27,6 +27,12 @@ config :dcomp,
   redis_host: System.fetch_env!("REDIS_HOST"),
   redis_pass: System.fetch_env!("REDIS_PASS")
 
+if config_env() != :test do
+  config :dcomp,
+    mirror_dir: System.get_env("MIRROR_DIR", "priv/mirrors"),
+    uploads_path: System.get_env("UPLOADS_PATH", "priv/static/uploads")
+end
+
 if config_env() == :dev do
   config :dcomp, DcompWeb.Endpoint,
     http: [port: String.to_integer(System.get_env("PORT", "4000"))],

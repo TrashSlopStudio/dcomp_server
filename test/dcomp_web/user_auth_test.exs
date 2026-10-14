@@ -250,6 +250,58 @@ defmodule DcompWeb.UserAuthTest do
     end
   end
 
+  describe "require_admin/2" do
+    test "halts when the user is not an admin", %{conn: conn, user: user} do
+      conn =
+        conn
+        |> assign(:current_scope, Scope.for_user(user))
+        |> fetch_flash()
+        |> UserAuth.require_admin([])
+
+      assert conn.halted
+      assert redirected_to(conn) == ~p"/"
+    end
+
+    test "halts when there is no scope", %{conn: conn} do
+      conn =
+        conn |> assign(:current_scope, nil) |> fetch_flash() |> UserAuth.require_admin([])
+
+      assert conn.halted
+    end
+
+    test "passes for an admin", %{conn: conn, user: user} do
+      {:ok, admin} = Accounts.make_admin(user.email)
+      conn = conn |> assign(:current_scope, Scope.for_user(admin)) |> UserAuth.require_admin([])
+      refute conn.halted
+    end
+  end
+
+  describe "on_mount :require_admin" do
+    setup do
+      %{
+        socket: %Phoenix.LiveView.Socket{
+          endpoint: DcompWeb.Endpoint,
+          assigns: %{__changed__: %{}, flash: %{}}
+        }
+      }
+    end
+
+    test "halts without a session token", %{socket: socket} do
+      assert {:halt, _} = UserAuth.on_mount(:require_admin, %{}, %{}, socket)
+    end
+
+    test "halts for a plain user and continues for an admin", %{user: user, socket: socket} do
+      token = Accounts.generate_user_session_token(user)
+      session = %{"user_token" => token}
+
+      assert {:halt, _} = UserAuth.on_mount(:require_admin, %{}, session, socket)
+
+      {:ok, _} = Accounts.make_admin(user.email)
+      assert {:cont, socket} = UserAuth.on_mount(:require_admin, %{}, session, socket)
+      assert socket.assigns.current_scope.user.id == user.id
+    end
+  end
+
   describe "require_authenticated_user/2" do
     setup %{conn: conn} do
       %{conn: UserAuth.fetch_current_scope_for_user(conn, [])}
