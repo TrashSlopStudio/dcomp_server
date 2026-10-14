@@ -100,6 +100,17 @@ defmodule DcompWeb.GameLiveTest do
     assert has_element?(view, "#contribute-rom-sha1", sha)
   end
 
+  test "the clone command shell-quotes an odd repo URL", %{conn: conn} do
+    game = game_fixture(%{repo_url: "https://example.com/$(id);it's"})
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}")
+
+    assert has_element?(
+             view,
+             "#contribute-clone",
+             "git clone 'https://example.com/$(id);it'\\''s'"
+           )
+  end
+
   test "an unknown game is a 404", %{conn: conn} do
     assert_error_sent 404, fn -> get(conn, ~p"/games/nope") end
   end

@@ -92,7 +92,7 @@ defmodule DcompWeb.GameLive.Show do
 
   # "https://github.com/owner/repo(.git)" -> "owner/repo"; nil for other hosts.
   defp repo_slug(%{repo_url: url}) do
-    case Regex.run(~r{^https://github\.com/([^/\s]+/[^/\s]+?)(?:\.git)?/?$}, url) do
+    case Regex.run(~r{^https://github\.com/([\w.-]+/[\w.-]+?)(?:\.git)?/?$}, url) do
       [_, slug] -> slug
       _ -> nil
     end
@@ -100,9 +100,17 @@ defmodule DcompWeb.GameLive.Show do
 
   defp clone_command(game) do
     case repo_slug(game) do
-      nil -> "git clone #{game.repo_url}"
+      nil -> "git clone #{shell_quote(game.repo_url)}"
       slug -> "gh repo fork --clone #{slug}"
     end
+  end
+
+  # The URL is admin input that visitors paste into a terminal: quote anything the shell would
+  # interpret (`$(...)`, `;`, spaces, quotes).
+  defp shell_quote(value) do
+    if value =~ ~r{^[\w@%+=:,./-]+$},
+      do: value,
+      else: "'" <> String.replace(value, "'", "'\\''") <> "'"
   end
 
   defp rules(game) do
