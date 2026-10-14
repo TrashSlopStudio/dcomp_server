@@ -111,6 +111,15 @@ defmodule DcompWeb.GameLiveTest do
            )
   end
 
+  test "a game deleted while viewed sends the viewer home", %{conn: conn} do
+    game = synced_game_fixture()
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}")
+    Dcomp.Repo.delete!(game)
+
+    send(view.pid, {:synced, game.slug})
+    assert_redirect(view, ~p"/")
+  end
+
   test "an unknown game is a 404", %{conn: conn} do
     assert_error_sent 404, fn -> get(conn, ~p"/games/nope") end
   end

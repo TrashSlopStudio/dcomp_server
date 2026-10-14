@@ -35,12 +35,17 @@ defmodule DcompWeb.GameLive.Show do
 
   @impl true
   def handle_info({:synced, _slug}, socket) do
-    socket = load(socket)
+    if Decomp.get_game(socket.assigns.game.id) do
+      socket = load(socket)
 
-    {:noreply,
-     socket
-     |> push_event("puzzle:data", puzzle_payload(socket))
-     |> push_event("burnup:data", burn_up_payload(socket))}
+      {:noreply,
+       socket
+       |> push_event("puzzle:data", puzzle_payload(socket))
+       |> push_event("burnup:data", burn_up_payload(socket))}
+    else
+      {:noreply,
+       socket |> put_flash(:error, "That game no longer exists.") |> push_navigate(to: ~p"/")}
+    end
   end
 
   # Loads everything the page shows. Small lists are streams reset on each refresh.
