@@ -4,6 +4,44 @@ defmodule DcompWeb.GameComponents do
 
   ## Components
 
+  attr :id, :string, required: true
+  attr :text, :string, required: true, doc: "shown and copied as is"
+
+  @doc "A code block with a button that copies its text to the clipboard."
+  def code_block(assigns) do
+    ~H"""
+    <div class="relative mt-1.5 text-xs">
+      <pre class="overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-base-300 py-2.5 pl-3 pr-16 font-mono"><code id={@id}>{@text}</code></pre>
+      <button
+        id={"#{@id}-copy"}
+        type="button"
+        phx-hook=".CopyButton"
+        data-target={"##{@id}"}
+        aria-label="Copy to clipboard"
+        class="group/copy absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-md bg-base-100/80 px-2 py-1 font-sans text-base-content/70 transition hover:bg-base-100 hover:text-primary"
+      >
+        <.icon name="hero-clipboard-document" class="size-3.5" />
+        <span class="group-data-[copied]/copy:hidden">Copy</span>
+        <span class="hidden group-data-[copied]/copy:inline">Copied</span>
+      </button>
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".CopyButton">
+        export default {
+          mounted() {
+            this.el.addEventListener("click", async () => {
+              const code = document.querySelector(this.el.dataset.target)
+              try { await navigator.clipboard.writeText(code.textContent) } catch (_) { return }
+              this.el.dataset.copied = ""
+              clearTimeout(this.timer)
+              this.timer = setTimeout(() => delete this.el.dataset.copied, 1500)
+            })
+          },
+          destroyed() { clearTimeout(this.timer) }
+        }
+      </script>
+    </div>
+    """
+  end
+
   attr :login, :string, default: nil, doc: "GitHub login; nil renders the anonymous icon"
   attr :url, :string, default: nil
   attr :size, :string, default: "size-6"

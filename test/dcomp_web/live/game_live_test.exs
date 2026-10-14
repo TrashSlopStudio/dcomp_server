@@ -79,9 +79,10 @@ defmodule DcompWeb.GameLiveTest do
     end
 
     test "shows how to contribute to this game's repo", %{view: view, game: game} do
-      assert has_element?(view, "#contribute")
+      assert has_element?(view, "#contribute-open")
+      assert has_element?(view, "#contribute-modal")
       assert has_element?(view, "#contribute-clone", "git clone #{game.repo_url}")
-      assert has_element?(view, "#contribute a[href='#{game.repo_url}']")
+      assert has_element?(view, "#contribute-modal a[href='#{game.repo_url}']")
       refute has_element?(view, "#contribute-rom-sha1")
     end
 

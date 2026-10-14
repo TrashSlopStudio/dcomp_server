@@ -133,6 +133,14 @@ defmodule DcompWeb.GameLive.Show do
         <div class="flex flex-wrap items-end justify-between gap-3">
           <h1 id="game-title" class="text-3xl font-bold tracking-tight">{@game.name}</h1>
           <div class="flex flex-wrap items-center gap-3 text-sm text-base-content/60">
+            <button
+              id="contribute-open"
+              type="button"
+              phx-click={show("#contribute-modal")}
+              class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 font-medium text-primary-content transition hover:opacity-90"
+            >
+              <.icon name="hero-command-line" class="size-4" /> Contribute
+            </button>
             <a
               href={@game.repo_url}
               target="_blank"
@@ -271,89 +279,6 @@ defmodule DcompWeb.GameLive.Show do
               sub={"of #{number(@m.totals.all.count)} total"}
             />
           </div>
-          <details
-            id="contribute"
-            class="group rounded-2xl border border-base-300 bg-base-200/50 px-4 py-3 text-sm"
-          >
-            <summary class="flex cursor-pointer list-none items-center justify-between gap-2 font-semibold">
-              <span class="flex items-center gap-2">
-                <.icon name="hero-command-line" class="size-4 text-primary" /> How to contribute
-              </span>
-              <.icon
-                name="hero-chevron-down"
-                class="size-4 text-base-content/60 transition group-open:rotate-180"
-              />
-            </summary>
-            <ol class="mt-3 list-decimal space-y-3 pl-5 text-base-content/80">
-              <li>
-                Install the
-                <a
-                  href="https://cli.github.com"
-                  target="_blank"
-                  rel="noopener"
-                  class="text-primary underline"
-                >GitHub CLI</a>
-                (<code class="rounded bg-base-300 px-1.5 py-0.5">gh auth login</code>) and an AI coding agent of your choice, such as <a
-                  href="https://claude.com/claude-code"
-                  target="_blank"
-                  rel="noopener"
-                  class="text-primary underline"
-                >Claude Code</a>, Codex or Cursor.
-                <ul id="install-commands" class="mt-2 list-disc space-y-1 pl-5">
-                  <li>
-                    GitHub CLI: <code class="rounded bg-base-300 px-1.5 py-0.5">brew install gh</code>
-                    (macOS), or
-                    <code class="rounded bg-base-300 px-1.5 py-0.5">sudo apt install gh</code>
-                    (Debian/Ubuntu, <a
-                      href="https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"
-                      target="_blank"
-                      rel="noopener"
-                      class="text-primary underline"
-                    >more info</a>)
-                  </li>
-                  <li>
-                    Claude Code, for example:
-                    <code class="rounded bg-base-300 px-1.5 py-0.5">curl -fsSL https://claude.ai/install.sh | bash</code>
-                  </li>
-                </ul>
-              </li>
-              <li>
-                Fork and clone <a
-                  href={@game.repo_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-primary underline"
-                >
-                  {repo_slug(@game) || @game.repo_url}
-                </a>:
-                <code
-                  id="contribute-clone"
-                  class="mt-1 block break-all rounded bg-base-300 px-2 py-1.5"
-                >
-                  {clone_command(@game)}
-                </code>
-              </li>
-              <li>
-                Follow the setup in <code class="rounded bg-base-300 px-1.5 py-0.5">AGENTS.md</code>
-                (compiler tools and your own legally obtained ROM as <code class="rounded bg-base-300 px-1.5 py-0.5">baserom.gba</code>).
-                <span :if={@game.rom_sha1}>
-                  Its SHA1 must be <code
-                    id="contribute-rom-sha1"
-                    class="break-all rounded bg-base-300 px-1.5 py-0.5"
-                  >{@game.rom_sha1}</code>.
-                </span>
-              </li>
-              <li>
-                Start your agent in the clone and tell it:
-                <p class="mt-2 rounded-lg bg-base-300/60 p-3 italic">
-                  "Follow AGENTS.md and contribute to this decomp: claim a function, match it, and open the pull requests against the {@game.branch} branch."
-                </p>
-              </li>
-            </ol>
-            <p id="contribute-rules" class="mt-3 text-xs text-base-content/60">
-              {rules(@game)}
-            </p>
-          </details>
         </div>
       </div>
 
@@ -960,6 +885,115 @@ defmodule DcompWeb.GameLive.Show do
           },
         }
       </script>
+
+      <div
+        id="contribute-modal"
+        class="fixed inset-0 z-50 hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="contribute-title"
+        phx-window-keydown={hide("#contribute-modal")}
+        phx-key="escape"
+      >
+        <div
+          class="absolute inset-0 bg-base-300/70 backdrop-blur-sm"
+          phx-click={hide("#contribute-modal")}
+          aria-hidden="true"
+        >
+        </div>
+        <div class="pointer-events-none relative flex h-full items-center justify-center p-4">
+          <.focus_wrap
+            id="contribute-focus"
+            class="pointer-events-auto flex max-h-full w-full max-w-2xl flex-col rounded-2xl border border-base-300 bg-base-100 shadow-2xl"
+          >
+            <div class="flex items-center justify-between gap-3 border-b border-base-300 px-5 py-3">
+              <h2 id="contribute-title" class="flex items-center gap-2 font-semibold">
+                <.icon name="hero-command-line" class="size-5 text-primary" />
+                How to contribute to {@game.name}
+              </h2>
+              <button
+                id="contribute-close"
+                type="button"
+                phx-click={hide("#contribute-modal")}
+                aria-label="Close"
+                class="rounded-lg p-1.5 text-base-content/60 transition hover:bg-base-200 hover:text-base-content"
+              >
+                <.icon name="hero-x-mark" class="size-5" />
+              </button>
+            </div>
+            <div class="overflow-y-auto px-5 py-4 text-sm text-base-content/80">
+              <ol class="list-decimal space-y-3 pl-5 text-base-content/80">
+                <li>
+                  Install the
+                  <a
+                    href="https://cli.github.com"
+                    target="_blank"
+                    rel="noopener"
+                    class="text-primary underline"
+                  >GitHub CLI</a>
+                  and an AI coding agent of your choice, such as <a
+                    href="https://claude.com/claude-code"
+                    target="_blank"
+                    rel="noopener"
+                    class="text-primary underline"
+                  >Claude Code</a>, Codex or Cursor.
+                  <div id="install-commands" class="mt-2 space-y-2">
+                    <div>
+                      GitHub CLI on macOS: <.code_block id="install-gh-brew" text="brew install gh" />
+                    </div>
+                    <div>
+                      GitHub CLI on Debian/Ubuntu (<a
+                        href="https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian"
+                        target="_blank"
+                        rel="noopener"
+                        class="text-primary underline"
+                      >more info</a>): <.code_block id="install-gh-apt" text="sudo apt install gh" />
+                    </div>
+                    <div>
+                      Then log in: <.code_block id="gh-auth-login" text="gh auth login" />
+                    </div>
+                    <div>
+                      Claude Code, for example:
+                      <.code_block
+                        id="install-claude"
+                        text="curl -fsSL https://claude.ai/install.sh | bash"
+                      />
+                    </div>
+                  </div>
+                </li>
+                <li>
+                  Fork and clone <a
+                    href={@game.repo_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-primary underline"
+                  >
+          {repo_slug(@game) || @game.repo_url}
+        </a>:
+                  <.code_block id="contribute-clone" text={clone_command(@game)} />
+                </li>
+                <li>
+                  Follow the setup in <code class="rounded bg-base-300 px-1.5 py-0.5">AGENTS.md</code>
+                  (compiler tools and your own legally obtained ROM as <code class="rounded bg-base-300 px-1.5 py-0.5">baserom.gba</code>).
+                  <div :if={@game.rom_sha1}>
+                    Its SHA1 must be: <.code_block id="contribute-rom-sha1" text={@game.rom_sha1} />
+                  </div>
+                </li>
+                <li>
+                  Start your agent in the clone and tell it:
+                  <.code_block
+                    id="contribute-prompt"
+                    text={"Follow AGENTS.md and contribute to this decomp: claim a function, match it, and open the pull requests against the #{@game.branch} branch."}
+                  />
+                </li>
+              </ol>
+              <p id="contribute-rules" class="mt-4 text-xs text-base-content/60">
+                {rules(@game)}
+              </p>
+            </div>
+          </.focus_wrap>
+        </div>
+      </div>
     </Layouts.app>
     """
   end
