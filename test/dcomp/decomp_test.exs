@@ -79,6 +79,12 @@ defmodule Dcomp.DecompTest do
       refute File.exists?(dir)
     end
 
+    test "the slug can't change after creation" do
+      {:ok, game} = Decomp.create_game(%{name: "Keep", repo_url: "https://example.com/o/r"})
+      assert {:ok, game} = Decomp.update_game(game, %{slug: "other", name: "Renamed"})
+      assert {game.slug, game.name} == {"keep", "Renamed"}
+    end
+
     test "the ROM SHA1 can be cleared again" do
       attrs = %{
         name: "G",

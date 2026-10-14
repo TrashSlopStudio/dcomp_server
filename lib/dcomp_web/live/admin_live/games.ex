@@ -167,8 +167,9 @@ defmodule DcompWeb.AdminLive.Games do
               <.input
                 field={@form[:slug]}
                 type="text"
-                label="Slug (optional)"
+                label={if @live_action == :edit, do: "Slug (fixed)", else: "Slug (optional)"}
                 placeholder="drill-dozer"
+                disabled={@live_action == :edit}
               />
             </div>
             <.input

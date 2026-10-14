@@ -28,9 +28,14 @@ defmodule Dcomp.Decomp.Game do
     timestamps(type: :utc_datetime)
   end
 
+  # The slug names the mirror directory, the public URL and the webhook URL, so it is chosen at
+  # creation and fixed afterwards.
   def changeset(game, attrs) do
+    fields = [:name, :repo_url, :branch, :rom_sha1]
+    fields = if game.__meta__.state == :built, do: [:slug | fields], else: fields
+
     game
-    |> cast(attrs, [:name, :slug, :repo_url, :branch, :rom_sha1])
+    |> cast(attrs, fields)
     |> validate_required([:name, :repo_url, :branch])
     |> update_change(:rom_sha1, &normalize_sha/1)
     |> validate_format(:rom_sha1, ~r/^[0-9a-f]{40}$/, message: "must be 40 hex characters")
