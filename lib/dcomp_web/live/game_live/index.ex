@@ -29,21 +29,14 @@ defmodule DcompWeb.GameLive.Index do
         </div>
       </section>
 
-      <details
+      <section
         id="get-started"
-        class="group mb-8 rounded-2xl border border-base-300 bg-base-200/50 px-6 py-4"
+        class="mb-8 rounded-2xl border border-base-300 bg-base-200/50 px-6 py-5"
       >
-        <summary class="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold">
-          <span class="flex items-center gap-2">
-            <.icon name="hero-information-circle" class="size-5 text-primary" />
-            How contributing works
-          </span>
-          <.icon
-            name="hero-chevron-down"
-            class="size-5 text-base-content/60 transition group-open:rotate-180"
-          />
-        </summary>
-        <div class="mt-4 space-y-3 text-sm text-base-content/80">
+        <h2 class="flex items-center gap-2 font-semibold">
+          <.icon name="hero-information-circle" class="size-5 text-primary" /> How contributing works
+        </h2>
+        <div class="mt-3 space-y-3 text-sm text-base-content/80">
           <p>
             Each project is a git repository. You claim a function with a pull request, write C that compiles to exactly the original bytes, then open another pull request with the solution. CI checks and merges both, and this site picks them up on the next sync.
           </p>
@@ -61,7 +54,7 @@ defmodule DcompWeb.GameLive.Index do
             Open a project below for its repository, setup and rules.
           </p>
         </div>
-      </details>
+      </section>
 
       <div
         id="games"
