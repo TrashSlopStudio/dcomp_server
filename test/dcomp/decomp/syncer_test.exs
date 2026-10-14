@@ -28,6 +28,13 @@ defmodule Dcomp.Decomp.SyncerTest do
     assert Repo.reload!(game).last_synced_sha
   end
 
+  test "ignores a tick from a replaced timer", %{game: game} do
+    pid = start_supervised!({Syncer, name: :stale_syncer, initial_delay_ms: :infinity})
+    send(pid, {:tick, make_ref()})
+    _ = :sys.get_state(pid)
+    refute Repo.reload!(game).last_synced_sha
+  end
+
   test "polls on its own and survives a broken game", %{game: game} do
     Repo.insert!(%Game{name: "Bad", slug: "bad", repo_url: "/nonexistent/repo", branch: "main"})
     Phoenix.PubSub.subscribe(Dcomp.PubSub, Sync.topic(game.slug))

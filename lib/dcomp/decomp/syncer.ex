@@ -25,19 +25,23 @@ defmodule Dcomp.Decomp.Syncer do
 
   @impl true
   def init(opts) do
-    {:ok, %{timer: schedule(Keyword.get(opts, :initial_delay_ms, 5_000))}}
+    {:ok, schedule(%{timer: nil, tick: nil}, Keyword.get(opts, :initial_delay_ms, 5_000))}
   end
 
+  # Each timer carries a ref and only the latest one counts: a tick that was already in the
+  # mailbox when `reschedule/0` ran can't start a second chain.
   @impl true
-  def handle_info(:tick, state) do
+  def handle_info({:tick, ref}, %{tick: ref} = state) do
     Enum.each(Decomp.list_games(), &sync/1)
-    {:noreply, %{state | timer: schedule(Decomp.get_settings().poll_interval_s * 1000)}}
+    {:noreply, schedule(state, interval_ms())}
   end
+
+  def handle_info({:tick, _stale}, state), do: {:noreply, state}
 
   @impl true
   def handle_cast(:reschedule, %{timer: timer} = state) do
     if timer, do: Process.cancel_timer(timer)
-    {:noreply, %{state | timer: schedule(Decomp.get_settings().poll_interval_s * 1000)}}
+    {:noreply, schedule(state, interval_ms())}
   end
 
   def handle_cast({:sync, slug}, state) do
@@ -61,6 +65,12 @@ defmodule Dcomp.Decomp.Syncer do
       |> Dcomp.Repo.update()
   end
 
-  defp schedule(:infinity), do: nil
-  defp schedule(ms), do: Process.send_after(self(), :tick, ms)
+  defp interval_ms, do: Decomp.get_settings().poll_interval_s * 1000
+
+  defp schedule(state, :infinity), do: %{state | timer: nil, tick: nil}
+
+  defp schedule(state, ms) do
+    ref = make_ref()
+    %{state | timer: Process.send_after(self(), {:tick, ref}, ms), tick: ref}
+  end
 end
