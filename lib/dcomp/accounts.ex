@@ -38,6 +38,24 @@ defmodule Dcomp.Accounts do
     end
   end
 
+  @doc """
+  Creates a confirmed user with a password and the given role. Only for admins: there is no
+  public sign-up. `attrs` takes `:email` and `:password`.
+  """
+  def create_user(attrs, role) when role in [:user, :admin] do
+    %User{role: role, confirmed_at: DateTime.utc_now(:second)}
+    |> User.email_changeset(attrs)
+    |> User.password_changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc "Changeset behind the admin's new-user form (password not hashed, for live validation)."
+  def change_new_user(attrs \\ %{}) do
+    %User{}
+    |> User.email_changeset(attrs)
+    |> User.password_changeset(attrs, hash_password: false)
+  end
+
   def list_users, do: Repo.all(from u in User, order_by: u.email)
 
   @doc """

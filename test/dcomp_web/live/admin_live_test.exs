@@ -248,6 +248,49 @@ defmodule DcompWeb.AdminLiveTest do
       assert Repo.reload!(other).role == :user
     end
 
+    test "creates a user or an admin who can log in with the password", %{conn: conn} do
+      {:ok, view, _} = live(conn, ~p"/admin/users")
+
+      view
+      |> form("#new-user-form",
+        user: %{email: "new@example.com", password: "a long password!", role: "admin"}
+      )
+      |> render_submit()
+
+      user = Accounts.get_user_by_email("new@example.com")
+      assert user.role == :admin
+      assert user.confirmed_at
+      assert Accounts.get_user_by_email_and_password("new@example.com", "a long password!")
+      assert has_element?(view, "#users-#{user.id}")
+    end
+
+    test "rejects a short password and a taken email", %{conn: conn, admin: admin} do
+      {:ok, view, _} = live(conn, ~p"/admin/users")
+
+      html =
+        view
+        |> form("#new-user-form", user: %{email: admin.email, password: "short"})
+        |> render_submit()
+
+      assert html =~ "has already been taken"
+      assert html =~ "should be at least 12 character"
+      assert Accounts.get_user_by_email("nobody@example.com") == nil
+    end
+
+    test "sets a new password for a user", %{conn: conn} do
+      other = user_fixture()
+      {:ok, view, _} = live(conn, ~p"/admin/users")
+
+      view |> element("#set-password-#{other.id}") |> render_click()
+
+      view
+      |> form("#password-form-#{other.id}", password: %{password: "brand new password"})
+      |> render_submit()
+
+      assert Accounts.get_user_by_email_and_password(other.email, "brand new password")
+      refute has_element?(view, "#password-form-#{other.id}")
+    end
+
     test "the last admin can't be demoted", %{conn: conn, admin: admin} do
       {:ok, view, _} = live(conn, ~p"/admin/users")
       html = view |> element("#demote-#{admin.id}") |> render_click()
