@@ -21,9 +21,8 @@ defmodule Dcomp.Decomp.Mirror do
 
     if File.dir?(dir) do
       # The URL can be edited after the first clone, so point origin at the current one.
-      with {_, 0} <- git(["-C", dir, "remote", "set-url", "origin", "--", url]) do
-        ok(git(["-C", dir, "fetch", "--prune", "--quiet", "origin"], safe: true))
-      else
+      case git(["-C", dir, "remote", "set-url", "origin", "--", url]) do
+        {_, 0} -> ok(git(["-C", dir, "fetch", "--prune", "--quiet", "origin"], safe: true))
         failed -> ok(failed)
       end
     else
