@@ -20,7 +20,7 @@ defmodule Dcomp.Decomp.Metrics do
   ]
   @velocity_days 30
   @top_remaining 10
-  @activity 20
+  @activity 10
 
   def for_game(%Game{} = game, now \\ DateTime.utc_now()) do
     totals = totals(game)
@@ -52,7 +52,7 @@ defmodule Dcomp.Decomp.Metrics do
   def revealed_pct(metrics, :grid), do: metrics.completion_pct_count
 
   @doc """
-  Every function as `[addr, size, status, person]` (status 0 unclaimed, 1 claimed, 2 solved;
+  Every function as `[addr, size, status, person, solve_sha]` (status 0 unclaimed, 1 claimed, 2 solved;
   person is an index into the returned people list, or `nil`) for drawing the puzzle.
   """
   def puzzle_pieces(%Game{} = game) do
@@ -62,17 +62,17 @@ defmodule Dcomp.Decomp.Metrics do
         on: c.id == coalesce(f.solved_by_id, f.claimed_by_id),
         where: f.game_id == ^game.id,
         order_by: f.addr,
-        select: {f.addr, f.size, f.status, c.login, c.avatar_url}
+        select: {f.addr, f.size, f.status, c.login, c.avatar_url, f.solve_sha}
       )
       |> Repo.all()
 
     people = rows |> Enum.map(&elem(&1, 3)) |> Enum.reject(&is_nil/1) |> Enum.uniq()
     index = people |> Enum.with_index() |> Map.new()
-    avatars = for {_, _, _, l, a} <- rows, l, into: %{}, do: {l, a}
+    avatars = for {_, _, _, l, a, _} <- rows, l, into: %{}, do: {l, a}
 
     pieces =
-      for {addr, size, status, login, _} <- rows do
-        [addr, size, status_code(status), login && index[login]]
+      for {addr, size, status, login, _, sha} <- rows do
+        [addr, size, status_code(status), login && index[login], sha]
       end
 
     {pieces, Enum.map(people, &%{login: &1, avatar: avatars[&1]})}
@@ -199,6 +199,7 @@ defmodule Dcomp.Decomp.Metrics do
 
     %{
       solves_per_day: length(recent) / @velocity_days,
+      solves_24h: Enum.count(recent, fn {_, at, _} -> DateTime.diff(now, at) <= 86_400 end),
       solves_7d: Enum.count(recent, fn {_, at, _} -> DateTime.diff(now, at) <= 7 * 86_400 end),
       bytes_per_day: per_day_bytes,
       eta_days: if(per_day_bytes > 0, do: totals.remaining.bytes / per_day_bytes)
@@ -243,6 +244,8 @@ defmodule Dcomp.Decomp.Metrics do
   defp recent_activity(game) do
     from(e in Event,
       left_join: c in assoc(e, :contributor),
+      left_join: f in Func,
+      on: f.game_id == e.game_id and f.addr == e.addr,
       where: e.game_id == ^game.id and e.type in [:claim, :solve, :release, :expire],
       order_by: [desc: e.occurred_at, desc: e.inserted_at],
       limit: @activity,
@@ -250,6 +253,8 @@ defmodule Dcomp.Decomp.Metrics do
         id: e.id,
         type: e.type,
         addr: e.addr,
+        size: f.size,
+        sha: e.sha,
         at: e.occurred_at,
         login: c.login,
         avatar_url: c.avatar_url

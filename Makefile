@@ -53,7 +53,10 @@ docker.logs:
 #🐳 docker.run: @ Run the dcomp_app docker instance
 docker.run: PORT:=5000
 docker.run:
-	@docker run --detach --name dcomp_app --network dcomp_server_storage -p ${PORT}:5000 --env-file .env.prod dcomp_app
+	@for c in dcomp_postgres_service dcomp_redis_service; do \
+		[ "$$(docker inspect --type container -f '{{.State.Running}}' $$c 2>/dev/null)" = true ] || { echo "$$c is not running: docker compose up -d postgres redis"; exit 1; }; \
+	done
+	@docker run --detach --name dcomp_app --network $$(docker inspect --type container dcomp_postgres_service -f '{{range $$n, $$_ := .NetworkSettings.Networks}}{{$$n}}{{"\n"}}{{end}}' | head -n1) -p ${PORT}:5000 --env-file .env.prod dcomp_app
 
 #🐳 docker.connect: @ Connect to the dcomp_app running container
 docker.connect:

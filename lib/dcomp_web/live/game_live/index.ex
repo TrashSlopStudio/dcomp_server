@@ -86,7 +86,7 @@ defmodule DcompWeb.GameLive.Index do
         <.link
           :for={{id, card} <- @streams.games}
           id={id}
-          navigate={~p"/games/#{card.game.slug}"}
+          navigate={~p"/games/#{card.game.id}"}
           class="group flex flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-200/50 transition duration-300 hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/10"
         >
           <div class="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-primary/30 to-accent/30">

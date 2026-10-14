@@ -17,7 +17,7 @@ defmodule DcompWeb.GameLiveTest do
     test "shows a card per game, linking to it", %{conn: conn} do
       game = synced_game_fixture()
       {:ok, view, _html} = live(conn, ~p"/")
-      assert has_element?(view, "#games-#{game.id}[href='/games/#{game.slug}']")
+      assert has_element?(view, "#games-#{game.id}[href='/games/#{game.id}']")
       assert has_element?(view, "#games-#{game.id}", "30.0%")
     end
 
@@ -34,7 +34,7 @@ defmodule DcompWeb.GameLiveTest do
   describe "show" do
     setup %{conn: conn} do
       game = synced_game_fixture()
-      {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}")
+      {:ok, view, _html} = live(conn, ~p"/games/#{game.id}")
       %{game: game, view: view}
     end
 
@@ -63,7 +63,7 @@ defmodule DcompWeb.GameLiveTest do
       assert has_element?(view, "#remaining-08000400")
       assert has_element?(view, "#remaining-08000300")
       assert has_element?(view, "#strikes-cy", "1 / 3")
-      assert has_element?(view, "#activity li", "08000200")
+      assert has_element?(view, "#recent-feed li", "08000200")
     end
 
     test "hooks get their data through a ready event", %{view: view} do
@@ -71,20 +71,33 @@ defmodule DcompWeb.GameLiveTest do
       assert_reply view, %{pieces: pieces, people: people, mode: "size", image: nil}
       assert length(pieces) == 4
       assert ["ana"] = Enum.map(people, & &1.login)
-      # [addr, size, status (2 = solved), person index]
-      assert ["08000100", 100, 2, 0] in pieces
-      assert ["08000200", 200, 2, nil] in pieces
+      # [addr, size, status (2 = solved), person index, solve sha]
+      assert Enum.any?(pieces, &match?(["08000100", 100, 2, 0, _], &1))
+      assert Enum.any?(pieces, &match?(["08000200", 200, 2, nil, _], &1))
 
       render_hook(view, "burnup-ready", %{})
       assert_reply view, %{points: [[_, 1, 100], [_, 2, 300]]}
     end
 
     test "shows how to contribute to this game's repo", %{view: view, game: game} do
-      assert has_element?(view, "#contribute-open")
+      refute has_element?(view, "#contribute-modal")
+      view |> element("#contribute-open") |> render_click()
+      assert_patch(view, ~p"/games/#{game.id}/contribute")
       assert has_element?(view, "#contribute-modal")
       assert has_element?(view, "#contribute-clone", "git clone #{game.repo_url}")
       assert has_element?(view, "#contribute-modal a[href='#{game.repo_url}']")
       refute has_element?(view, "#contribute-rom-sha1")
+    end
+
+    test "shows progress and the latest activity under the puzzle", %{view: view} do
+      refute has_element?(view, "#progress-line")
+      assert has_element?(view, "#recent-feed li", "08000200")
+      assert has_element?(view, "#recent-feed li time[datetime]")
+    end
+
+    test "a tick refreshes the feed's times without losing rows", %{view: view} do
+      send(view.pid, :tick)
+      assert has_element?(view, "#recent-feed li", "08000200")
     end
 
     test "pushes fresh data to the hooks after a sync", %{view: view, game: game} do
@@ -94,16 +107,39 @@ defmodule DcompWeb.GameLiveTest do
     end
   end
 
+  test "the ranking can be ordered by function count or by size", %{conn: conn} do
+    import Ecto.Query
+    game = synced_game_fixture()
+    ana = Dcomp.Repo.get_by!(Dcomp.Decomp.Contributor, login: "ana")
+    funcs = from(f in Dcomp.Decomp.Function, where: f.game_id == ^game.id)
+
+    # ana: 2 solves, 400 B. The unknown solver: 1 solve, 5000 B.
+    Dcomp.Repo.update_all(from(f in funcs, where: f.addr == "08000200"), set: [size: 5000])
+
+    Dcomp.Repo.update_all(from(f in funcs, where: f.addr == "08000300"),
+      set: [status: :solved, solved_by_id: ana.id]
+    )
+
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.id}")
+    assert has_element?(view, "#rank-count[aria-pressed=true]")
+    assert has_element?(view, "#leaderboard li:nth-child(2)", "ana")
+
+    view |> element("#rank-size") |> render_click()
+    assert has_element?(view, "#rank-size[aria-pressed=true]")
+    refute has_element?(view, "#leaderboard li:nth-child(2)", "ana")
+    assert has_element?(view, "#leaderboard li:nth-child(3)", "ana")
+  end
+
   test "shows the expected ROM SHA1 when the game has one", %{conn: conn} do
     sha = String.duplicate("ab", 20)
     game = synced_game_fixture() |> Ecto.Changeset.change(rom_sha1: sha) |> Dcomp.Repo.update!()
-    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}")
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.id}/contribute")
     assert has_element?(view, "#contribute-rom-sha1", sha)
   end
 
   test "the clone command shell-quotes an odd repo URL", %{conn: conn} do
     game = game_fixture(%{repo_url: "https://example.com/$(id);it's"})
-    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}")
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.id}/contribute")
 
     assert has_element?(
              view,
@@ -114,7 +150,7 @@ defmodule DcompWeb.GameLiveTest do
 
   test "a game deleted while viewed sends the viewer home", %{conn: conn} do
     game = synced_game_fixture()
-    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}")
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.id}")
     Dcomp.Repo.delete!(game)
 
     send(view.pid, {:synced, game.slug})
@@ -127,7 +163,7 @@ defmodule DcompWeb.GameLiveTest do
 
   test "a game that was never synced renders with zeroes", %{conn: conn} do
     game = game_fixture()
-    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}")
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.id}")
     assert has_element?(view, "#completion", "0.0%")
     assert has_element?(view, "#leaderboard-empty")
     assert has_element?(view, "#claims-empty")
@@ -136,7 +172,7 @@ defmodule DcompWeb.GameLiveTest do
   test "shows a notice when the last sync failed", %{conn: conn} do
     game = game_fixture()
     Dcomp.Repo.update!(Dcomp.Decomp.Game.sync_changeset(game, %{last_sync_error: "boom"}))
-    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}")
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.id}")
     assert has_element?(view, "#sync-error")
   end
 end

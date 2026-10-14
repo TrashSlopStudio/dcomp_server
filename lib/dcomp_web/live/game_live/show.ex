@@ -13,15 +13,49 @@ defmodule DcompWeb.GameLive.Show do
   alias Dcomp.Decomp
   alias Dcomp.Decomp.{Metrics, Sync}
 
-  @impl true
-  def mount(%{"slug" => slug}, _session, socket) do
-    game = Decomp.get_game_by_slug!(slug)
-    if connected?(socket), do: Phoenix.PubSub.subscribe(Dcomp.PubSub, Sync.topic(slug))
+  # How often "5 min ago" is recomputed.
+  @tick_ms 60_000
 
-    {:ok, socket |> assign(page_title: game.name, game: game, layout_override: nil) |> load()}
+  @impl true
+  def mount(%{"id" => id}, _session, socket) do
+    # A malformed id is a missing game (404), not a cast error (400).
+    game =
+      Decomp.get_game!(
+        if match?({:ok, _}, Ecto.UUID.cast(id)), do: id, else: Ecto.UUID.generate()
+      )
+
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Dcomp.PubSub, Sync.topic(game.slug))
+      # Lite is plain and has no live feed to refresh.
+      if !socket.assigns.lite, do: :timer.send_interval(@tick_ms, :tick)
+    end
+
+    {:ok,
+     socket
+     |> assign(
+       page_title: game.name,
+       game: game,
+       layout_override: nil,
+       feed_live?: false,
+       rank_by: :count
+     )
+     |> load()}
   end
 
   @impl true
+  def handle_params(_params, _uri, socket), do: {:noreply, socket}
+
+  @impl true
+  # Works in lite mode too, since the ranking is there.
+  def handle_event("set-rank", %{"by" => by}, socket) when by in ~w(count size) do
+    by = String.to_existing_atom(by)
+
+    {:noreply,
+     socket
+     |> assign(rank_by: by)
+     |> stream(:leaderboard, ranked(socket.assigns.m, by), reset: true)}
+  end
+
   # Lite mode has no puzzle or chart, so these events are ignored there.
   def handle_event(_event, _params, %{assigns: %{lite: true}} = socket), do: {:noreply, socket}
 
@@ -37,9 +71,18 @@ defmodule DcompWeb.GameLive.Show do
   def handle_event("burnup-ready", _params, socket), do: {:reply, burn_up_payload(socket), socket}
 
   @impl true
+  def handle_info(:tick, socket) do
+    # Only the time labels change. Animation is off for this render, so rows can't replay it.
+    {:noreply,
+     socket
+     |> assign(now: DateTime.utc_now(), feed_live?: false)
+     |> stream(:recent, socket.assigns.m.recent_activity, reset: true)}
+  end
+
   def handle_info({:synced, _slug}, socket) do
     if Decomp.get_game(socket.assigns.game.id) do
-      socket = load(socket)
+      # From the first sync on, rows that appear in the feed slide in; the initial ones don't.
+      socket = socket |> assign(feed_live?: true) |> load()
 
       if socket.assigns.lite do
         {:noreply, socket}
@@ -68,12 +111,16 @@ defmodule DcompWeb.GameLive.Show do
       now: DateTime.utc_now(),
       ascii: if(socket.assigns.lite, do: ascii_puzzle(game))
     )
-    |> stream(:leaderboard, m.leaderboard, reset: true)
+    |> stream(:leaderboard, ranked(m, socket.assigns.rank_by), reset: true)
     |> stream(:claims, m.active_claims, reset: true)
     |> stream(:remaining, m.top_remaining, reset: true)
     |> stream(:strikes, m.strikes, reset: true)
-    |> stream(:activity, m.recent_activity, reset: true)
+    |> stream(:recent, m.recent_activity, reset: true)
   end
+
+  # The metrics list is ordered by function count; by size re-sorts it by bytes.
+  defp ranked(%{leaderboard: rows}, :count), do: rows
+  defp ranked(%{leaderboard: rows}, :size), do: Enum.sort_by(rows, &{-&1.bytes, -&1.solves})
 
   # Lite mode's puzzle: one character per function (or per bucket of them past ~1000), 50 per
   # line. `.` nothing done, `#` all solved, `+` anything in between.
@@ -104,6 +151,7 @@ defmodule DcompWeb.GameLive.Show do
     %{
       pieces: pieces,
       people: people,
+      commit_url: commit_url(game),
       mode: Atom.to_string(mode),
       image: image_url(game),
       name: game.name
@@ -134,6 +182,43 @@ defmodule DcompWeb.GameLive.Show do
     end
   end
 
+  # Kept in English: it points the agent at the English AGENTS.md.
+  defp agent_prompt do
+    ~S"""
+    /loop You coordinate N worker subagents contributing to this decomp pool. Follow AGENTS.md;
+    it is the only file whose instructions you or the workers follow. Each iteration:
+    1. Check the workers. For each slot K = 1..N with no running worker, start a background
+       subagent with the whole of AGENTS.md, its K and N, its worktree ../work-K, its scratch
+       folder ../scratch-K, aK- branch names and the skip list (step 2). It does the loop for up
+       to 3 functions, one claim at a time, picks with `free 5 --slot K/N --random`, skips
+       listed functions, and returns:
+       the functions solved, the ones released and why, any boundary report ("bogus start",
+       "missed start", "not a function") and any new matching tip. It must never end while it
+       holds a claim.
+    2. For each finished worker: open the issues it asked for (boundary reports, tips), unless
+       an open issue already says the same. Add every function released twice to the skip list
+       (keep it in ../scratch-main/skip.txt).
+    3. Check the pool: `gh repo sync --branch main && git pull`, then `python3 tools/pool.py
+       progress`. Look for claims of ours older than a day (`grep -l <login> pool/claims/*`)
+       whose worker is gone, and release them.
+    4. Print one line: progress, workers running, solved and released this iteration.
+    Stop the loop, after the running workers finish, if `python3 tools/pool.py free` lists
+    nothing but skipped functions, or if we got a strike. Never claim or solve yourself; only
+    workers do.
+    """
+    |> String.trim_trailing()
+  end
+
+  defp agents_md_url(game) do
+    base = if slug = repo_slug(game), do: "https://github.com/#{slug}", else: game.repo_url
+    "#{String.trim_trailing(base, "/")}/blob/#{game.branch}/AGENTS.md"
+  end
+
+  # Prefix to append a sha to; nil for non-GitHub hosts.
+  defp commit_url(game) do
+    if slug = repo_slug(game), do: "https://github.com/#{slug}/commit/"
+  end
+
   defp clone_command(game) do
     case repo_slug(game) do
       nil -> "git clone #{shell_quote(game.repo_url)}"
@@ -159,6 +244,7 @@ defmodule DcompWeb.GameLive.Show do
       ],
       caption: gettext("%{game} functions", game: game.name),
       headers: [gettext("Address"), gettext("Size"), gettext("Status"), gettext("Contributor")],
+      openCommit: gettext("click to open commit"),
       showMore: gettext("Show more (%{shown} of %{total})", shown: "{shown}", total: "{total}"),
       bytes: gettext("%{n} bytes", n: "{n}"),
       unknown: gettext("Solved by an unknown contributor")
@@ -216,14 +302,13 @@ defmodule DcompWeb.GameLive.Show do
         <div class="flex flex-wrap items-end justify-between gap-3">
           <h1 id="game-title" class="text-3xl font-bold tracking-tight">{@game.name}</h1>
           <div class="flex flex-wrap items-center gap-3 text-sm text-base-content/60">
-            <button
+            <.link
               id="contribute-open"
-              type="button"
-              phx-click={show("#contribute-modal")}
+              patch={~p"/games/#{@game.id}/contribute"}
               class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 font-medium text-primary-content transition hover:opacity-90"
             >
               <.icon name="hero-command-line" class="size-4" /> {gettext("Contribute")}
-            </button>
+            </.link>
             <a
               href={@game.repo_url}
               target="_blank"
@@ -249,6 +334,51 @@ defmodule DcompWeb.GameLive.Show do
       >
         <.icon name="hero-exclamation-triangle" class="mt-0.5 size-4 shrink-0 text-warning" />
         <span>{gettext("The last sync failed, so this data may be out of date.")}</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+        <.stat
+          id="stat-pace"
+          icon="hero-bolt"
+          label={gettext("Pace")}
+          value={gettext("%{n}/day", n: decimal(@m.velocity.solves_per_day))}
+          sub={gettext("%{n} solved in 7 days", n: @m.velocity.solves_7d)}
+        />
+        <.stat
+          id="stat-eta"
+          icon="hero-calendar-days"
+          label={gettext("Est. finish")}
+          value={eta(@m.velocity.eta_days)}
+          sub={gettext("at the 30-day pace")}
+        />
+        <.stat
+          id="stat-median"
+          icon="hero-clock"
+          label={gettext("Claim to solve")}
+          value={duration(@m.median_claim_to_solve_s)}
+          sub={gettext("median")}
+        />
+        <.stat
+          id="stat-conversion"
+          icon="hero-arrow-trending-up"
+          label={gettext("Claims solved")}
+          value={if @m.conversion_rate, do: percent(@m.conversion_rate * 100), else: "–"}
+          sub={gettext("of all claims")}
+        />
+        <.stat
+          id="stat-expired"
+          icon="hero-clock"
+          label={gettext("Expired")}
+          value={number(@m.expired)}
+          sub={gettext("claims timed out")}
+        />
+        <.stat
+          id="stat-released"
+          icon="hero-arrow-uturn-left"
+          label={gettext("Released")}
+          value={number(@m.released)}
+          sub={gettext("given back")}
+        />
       </div>
 
       <div class="grid gap-6 lg:grid-cols-3">
@@ -331,7 +461,7 @@ defmodule DcompWeb.GameLive.Show do
             class="mt-3 text-xs text-base-content/70"
           >
             <summary class="cursor-pointer select-none hover:text-primary">
-              {gettext("View all functions as a list")}
+              {gettext("View all functions")}
             </summary>
             <div id="puzzle-list-body" phx-update="ignore" class="mt-2 max-h-96 overflow-auto"></div>
           </details>
@@ -396,52 +526,70 @@ defmodule DcompWeb.GameLive.Show do
               sub={gettext("of %{n} total", n: number(@m.totals.all.count))}
             />
           </div>
+          <.panel id="recent-panel" title={gettext("Recent activity")} class="flex-1">
+            <p
+              :if={@m.velocity.solves_24h > 0}
+              id="progress-line"
+              class="mb-2 text-sm tabular-nums text-base-content/70"
+            >
+              {gettext("%{n} solved in the last 24 h", n: @m.velocity.solves_24h)}
+            </p>
+            <ul
+              id="recent-feed"
+              phx-update="stream"
+              aria-label={gettext("Recent activity")}
+              class="divide-y divide-base-300 text-xs"
+            >
+              <li
+                id="recent-feed-empty"
+                class="hidden py-3 text-base-content/60 only:block"
+              >
+                {gettext("Nothing has happened yet.")}
+              </li>
+              <li
+                :for={{id, e} <- @streams.recent}
+                id={id}
+                phx-mounted={
+                  (@feed_live? and !@lite) &&
+                    JS.transition(
+                      {"transition-all duration-700 ease-out motion-reduce:transition-none",
+                       "-translate-y-2 bg-primary/20 opacity-0",
+                       "translate-y-0 bg-transparent opacity-100"},
+                      time: 700
+                    )
+                }
+                class="flex items-center gap-2 py-1.5"
+              >
+                <span title={event_label(e.type)} class="shrink-0">
+                  <.icon name={event_icon(e.type)} class="size-3.5 text-base-content/50" />
+                  <span class="sr-only">{event_label(e.type)}</span>
+                </span>
+                <.person login={e.login} url={e.avatar_url} size="size-4" />
+                <span class="text-base-content/70">
+                  <span class="font-mono">{e.addr}</span>
+                  <span :if={e.size} class="text-base-content/50">· {bytes(e.size)}</span>
+                </span>
+                <a
+                  :if={(e.type == :solve and e.sha) && commit_url(@game)}
+                  href={commit_url(@game) <> e.sha}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={gettext("View the commit")}
+                  class="font-mono text-primary hover:underline"
+                >
+                  {String.slice(e.sha, 0, 7)}
+                </a>
+                <time
+                  datetime={DateTime.to_iso8601(e.at)}
+                  title={Calendar.strftime(e.at, "%Y-%m-%d %H:%M UTC")}
+                  class="ml-auto whitespace-nowrap text-base-content/50"
+                >
+                  {time_ago(e.at, @now)}
+                </time>
+              </li>
+            </ul>
+          </.panel>
         </div>
-      </div>
-
-      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-        <.stat
-          id="stat-pace"
-          icon="hero-bolt"
-          label={gettext("Pace")}
-          value={gettext("%{n}/day", n: decimal(@m.velocity.solves_per_day))}
-          sub={gettext("%{n} solved in 7 days", n: @m.velocity.solves_7d)}
-        />
-        <.stat
-          id="stat-eta"
-          icon="hero-calendar-days"
-          label={gettext("Est. finish")}
-          value={eta(@m.velocity.eta_days)}
-          sub={gettext("at the 30-day pace")}
-        />
-        <.stat
-          id="stat-median"
-          icon="hero-clock"
-          label={gettext("Claim to solve")}
-          value={duration(@m.median_claim_to_solve_s)}
-          sub={gettext("median")}
-        />
-        <.stat
-          id="stat-conversion"
-          icon="hero-arrow-trending-up"
-          label={gettext("Claims solved")}
-          value={if @m.conversion_rate, do: percent(@m.conversion_rate * 100), else: "–"}
-          sub={gettext("of all claims")}
-        />
-        <.stat
-          id="stat-expired"
-          icon="hero-clock"
-          label={gettext("Expired")}
-          value={number(@m.expired)}
-          sub={gettext("claims timed out")}
-        />
-        <.stat
-          id="stat-released"
-          icon="hero-arrow-uturn-left"
-          label={gettext("Released")}
-          value={number(@m.released)}
-          sub={gettext("given back")}
-        />
       </div>
 
       <.panel id="burn-up-panel" title={gettext("Functions solved over time")}>
@@ -484,6 +632,32 @@ defmodule DcompWeb.GameLive.Show do
 
       <div class="grid gap-6 lg:grid-cols-2">
         <.panel id="leaderboard-panel" title={gettext("Ranking")}>
+          <:aside>
+            <div
+              id="rank-toggle"
+              role="group"
+              aria-label={gettext("Rank by")}
+              class="inline-flex rounded-lg border border-base-300 bg-base-100 p-0.5 text-xs"
+            >
+              <button
+                :for={{by, label} <- [count: gettext("By functions"), size: gettext("By size")]}
+                id={"rank-#{by}"}
+                type="button"
+                phx-click="set-rank"
+                phx-value-by={by}
+                aria-pressed={to_string(@rank_by == by)}
+                class={[
+                  "rounded-md px-2.5 py-1 font-medium transition",
+                  if(@rank_by == by,
+                    do: "bg-primary text-primary-content shadow",
+                    else: "text-base-content/60 hover:text-base-content"
+                  )
+                ]}
+              >
+                {label}
+              </button>
+            </div>
+          </:aside>
           <ol
             id="leaderboard"
             phx-update="stream"
@@ -502,8 +676,12 @@ defmodule DcompWeb.GameLive.Show do
             >
               <.person login={row.login} url={row.avatar_url} size="size-7" />
               <span class="ml-auto text-right tabular-nums">
-                <span class="font-semibold">{number(row.solves)}</span>
-                <span class="text-base-content/50"> · {bytes(row.bytes)}</span>
+                <span class={[@rank_by == :count && "font-semibold"]}>{number(row.solves)}</span>
+                <span class={[
+                  if(@rank_by == :size, do: "font-semibold", else: "text-base-content/50")
+                ]}>
+                  · {bytes(row.bytes)}
+                </span>
               </span>
             </li>
           </ol>
@@ -579,32 +757,6 @@ defmodule DcompWeb.GameLive.Show do
                 ></span>
               </span>
               <span class="text-right tabular-nums">{number(b.count)}</span>
-            </li>
-          </ul>
-        </.panel>
-
-        <.panel id="activity-panel" title={gettext("Recent activity")}>
-          <ul id="activity" phx-update="stream" class="divide-y divide-base-300">
-            <li
-              id="activity-empty"
-              class="hidden py-6 text-center text-sm text-base-content/60 only:block"
-            >
-              {gettext("Nothing has happened yet.")}
-            </li>
-            <li
-              :for={{id, e} <- @streams.activity}
-              id={id}
-              class="flex items-center gap-3 py-2.5 text-sm"
-            >
-              <.icon name={event_icon(e.type)} class="size-4 shrink-0 text-base-content/50" />
-              <.person login={e.login} url={e.avatar_url} size="size-5" />
-              <span class="text-base-content/70">
-                {event_label(e.type)} <span class="font-mono text-xs">{e.addr}</span>
-              </span>
-              <span class="ml-auto whitespace-nowrap text-xs text-base-content/50">{time_ago(
-                e.at,
-                @now
-              )}</span>
             </li>
           </ul>
         </.panel>
@@ -708,6 +860,10 @@ defmodule DcompWeb.GameLive.Show do
 
             this.canvas.addEventListener("mousemove", e => this.onMove(e))
             this.canvas.addEventListener("mouseleave", () => this.setHover(null))
+            this.canvas.addEventListener("click", () => {
+              const sha = this.hover && this.pieces[this.hover.i][4]
+              if (sha && this.commitUrl) window.open(this.commitUrl + sha, "_blank", "noopener")
+            })
             this.ro = new ResizeObserver(() => this.layout())
             this.ro.observe(this.el)
             this.theme = new MutationObserver(() => this.draw())
@@ -842,6 +998,7 @@ defmodule DcompWeb.GameLive.Show do
           setData(d) {
             this.pieces = d.pieces
             this.people = d.people
+            this.commitUrl = d.commit_url
             this.mode = d.mode
             this.name = d.name
             this.queueAnims()
@@ -985,6 +1142,7 @@ defmodule DcompWeb.GameLive.Show do
             } else if (status === 2) {
               line(this.t.unknown, "text-base-content/70")
             }
+            if (p[4] && this.commitUrl) line(p[4].slice(0, 7) + " · " + this.t.openCommit, "font-mono text-xs text-primary")
           },
         }
       </script>
@@ -1098,24 +1256,25 @@ defmodule DcompWeb.GameLive.Show do
       </script>
 
       <div
+        :if={@live_action == :contribute}
         id="contribute-modal"
-        class="fixed inset-0 z-50 hidden"
+        class="fixed inset-0 z-50"
         role="dialog"
         aria-modal="true"
         aria-labelledby="contribute-title"
-        phx-window-keydown={hide("#contribute-modal")}
+        phx-window-keydown={JS.patch(~p"/games/#{@game.id}")}
         phx-key="escape"
       >
         <div
           class="absolute inset-0 bg-base-300/70 backdrop-blur-sm"
-          phx-click={hide("#contribute-modal")}
+          phx-click={JS.patch(~p"/games/#{@game.id}")}
           aria-hidden="true"
         >
         </div>
         <div class="pointer-events-none relative flex h-full items-center justify-center p-4">
           <.focus_wrap
             id="contribute-focus"
-            class="pointer-events-auto flex max-h-full w-full max-w-2xl flex-col rounded-2xl border border-base-300 bg-base-100 shadow-2xl"
+            class="pointer-events-auto flex max-h-full min-h-0 w-full max-w-2xl flex-col rounded-2xl border border-base-300 bg-base-100 shadow-2xl"
           >
             <div class="flex items-center justify-between gap-3 border-b border-base-300 px-5 py-3">
               <h2 id="contribute-title" class="flex items-center gap-2 font-semibold">
@@ -1125,14 +1284,14 @@ defmodule DcompWeb.GameLive.Show do
               <button
                 id="contribute-close"
                 type="button"
-                phx-click={hide("#contribute-modal")}
+                phx-click={JS.patch(~p"/games/#{@game.id}")}
                 aria-label={gettext("Close")}
                 class="rounded-lg p-1.5 text-base-content/60 transition hover:bg-base-200 hover:text-base-content"
               >
                 <.icon name="hero-x-mark" class="size-5" />
               </button>
             </div>
-            <div class="overflow-y-auto px-5 py-4 text-sm text-base-content/80">
+            <div class="min-h-0 overflow-y-auto overscroll-contain px-5 py-4 text-sm text-base-content/80">
               <ol class="list-decimal space-y-3 pl-5 text-base-content/80">
                 <li>
                   {gettext("Install the")}
@@ -1201,8 +1360,19 @@ defmodule DcompWeb.GameLive.Show do
                   <%!-- Kept in English: it points the agent at the English AGENTS.md. --%>
                   <.code_block
                     id="contribute-prompt"
-                    text={"Follow AGENTS.md and contribute to this decomp: claim a function, match it, and open the pull requests against the #{@game.branch} branch."}
+                    text={agent_prompt()}
+                    scroll
                   />
+                  <p id="contribute-prompt-source" class="mt-1.5 text-xs text-base-content/60">
+                    {gettext("This prompt tells your agent to follow the")}
+                    <a
+                      href={agents_md_url(@game)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-primary underline"
+                    >AGENTS.md</a>
+                    {gettext("in this project's repository, which holds the real instructions.")}
+                  </p>
                 </li>
               </ol>
               <p id="contribute-rules" class="mt-4 text-xs text-base-content/60">

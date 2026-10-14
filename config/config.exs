@@ -38,7 +38,7 @@ config :dcomp, DcompWeb.Endpoint,
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
     formats: [html: DcompWeb.ErrorHTML, json: DcompWeb.ErrorJSON],
-    layout: false
+    layout: [html: {DcompWeb.Layouts, :root}]
   ],
   pubsub_server: Dcomp.PubSub,
   live_view: [signing_salt: "AkAO77me"]

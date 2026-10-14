@@ -261,7 +261,7 @@ defmodule DcompWeb.AdminLive.Games do
               <img :if={image_url(game)} src={image_url(game)} alt="" class="size-full object-cover" />
             </div>
             <div class="min-w-0 flex-1">
-              <.link navigate={~p"/games/#{game.slug}"} class="font-semibold hover:text-primary">
+              <.link navigate={~p"/games/#{game.id}"} class="font-semibold hover:text-primary">
                 {game.name}
               </.link>
               <div class="truncate text-xs text-base-content/60">{game.repo_url} · {game.branch}</div>
