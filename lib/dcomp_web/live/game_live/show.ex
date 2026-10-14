@@ -216,7 +216,7 @@ defmodule DcompWeb.GameLive.Show do
               <span class="size-3 rounded-sm bg-warning/60"></span> Claimed
             </li>
             <li class="flex items-center gap-1.5">
-              <span class="size-3 rounded-sm bg-primary"></span> Solved (shows the picture)
+              <span class="size-3 rounded-sm bg-primary"></span> Solved
             </li>
           </ul>
         </.panel>
