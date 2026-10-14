@@ -22,6 +22,9 @@ defmodule DcompWeb.GameLive.Show do
   end
 
   @impl true
+  # Lite mode has no puzzle or chart, so these events are ignored there.
+  def handle_event(_event, _params, %{assigns: %{lite: true}} = socket), do: {:noreply, socket}
+
   def handle_event("puzzle-ready", _params, socket), do: {:reply, puzzle_payload(socket), socket}
 
   def handle_event("set-layout", %{"mode" => mode}, socket) when mode in ~w(size grid) do
@@ -38,10 +41,14 @@ defmodule DcompWeb.GameLive.Show do
     if Decomp.get_game(socket.assigns.game.id) do
       socket = load(socket)
 
-      {:noreply,
-       socket
-       |> push_event("puzzle:data", puzzle_payload(socket))
-       |> push_event("burnup:data", burn_up_payload(socket))}
+      if socket.assigns.lite do
+        {:noreply, socket}
+      else
+        {:noreply,
+         socket
+         |> push_event("puzzle:data", puzzle_payload(socket))
+         |> push_event("burnup:data", burn_up_payload(socket))}
+      end
     else
       {:noreply,
        socket |> put_flash(:error, "That game no longer exists.") |> push_navigate(to: ~p"/")}
@@ -58,13 +65,37 @@ defmodule DcompWeb.GameLive.Show do
       game: game,
       layout_mode: socket.assigns.layout_override || Decomp.get_settings().layout_mode,
       m: m,
-      now: DateTime.utc_now()
+      now: DateTime.utc_now(),
+      ascii: if(socket.assigns.lite, do: ascii_puzzle(game))
     )
     |> stream(:leaderboard, m.leaderboard, reset: true)
     |> stream(:claims, m.active_claims, reset: true)
     |> stream(:remaining, m.top_remaining, reset: true)
     |> stream(:strikes, m.strikes, reset: true)
     |> stream(:activity, m.recent_activity, reset: true)
+  end
+
+  # Lite mode's puzzle: one character per function (or per bucket of them past ~1000), 50 per
+  # line. `.` nothing done, `#` all solved, `+` anything in between.
+  @ascii_cells 1000
+  @ascii_width 50
+  defp ascii_puzzle(game) do
+    {pieces, _people} = Metrics.puzzle_pieces(game)
+    size = max(ceil(length(pieces) / @ascii_cells), 1)
+
+    pieces
+    |> Enum.chunk_every(size)
+    |> Enum.map(fn chunk ->
+      statuses = Enum.map(chunk, &Enum.at(&1, 2))
+
+      cond do
+        Enum.all?(statuses, &(&1 == 2)) -> "#"
+        Enum.all?(statuses, &(&1 == 0)) -> "."
+        true -> "+"
+      end
+    end)
+    |> Enum.chunk_every(@ascii_width)
+    |> Enum.map_join("\n", &Enum.join/1)
   end
 
   defp puzzle_payload(%{assigns: %{game: game, layout_mode: mode}}) do
@@ -222,7 +253,7 @@ defmodule DcompWeb.GameLive.Show do
 
       <div class="grid gap-6 lg:grid-cols-3">
         <.panel id="puzzle-panel" title={gettext("The puzzle")} class="lg:col-span-2">
-          <:aside>
+          <:aside :if={!@lite}>
             <div
               id="layout-toggle"
               role="group"
@@ -250,7 +281,25 @@ defmodule DcompWeb.GameLive.Show do
               </button>
             </div>
           </:aside>
+          <div :if={@lite} id="puzzle-text">
+            <pre
+              id="puzzle-ascii"
+              class="overflow-x-auto leading-tight"
+              aria-label={
+                gettext("%{game} puzzle: %{solved} of %{total} functions solved, %{claimed} claimed",
+                  game: @game.name,
+                  solved: @m.totals.solved.count,
+                  total: @m.totals.all.count,
+                  claimed: @m.totals.claimed.count
+                )
+              }
+            >{@ascii}</pre>
+            <p id="puzzle-ascii-legend" class="mt-3 text-xs">
+              {gettext(". unclaimed   + claimed or partly solved   # solved")}
+            </p>
+          </div>
           <div
+            :if={!@lite}
             id="puzzle"
             data-i18n={Jason.encode!(puzzle_i18n(@game))}
             phx-hook=".Puzzle"
@@ -276,6 +325,7 @@ defmodule DcompWeb.GameLive.Show do
             </div>
           </div>
           <details
+            :if={!@lite}
             id="puzzle-list"
             phx-mounted={JS.ignore_attributes("open")}
             class="mt-3 text-xs text-base-content/70"
@@ -286,6 +336,7 @@ defmodule DcompWeb.GameLive.Show do
             <div id="puzzle-list-body" phx-update="ignore" class="mt-2 max-h-96 overflow-auto"></div>
           </details>
           <ul
+            :if={!@lite}
             id="puzzle-legend"
             class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-base-content/70"
           >
@@ -395,6 +446,7 @@ defmodule DcompWeb.GameLive.Show do
 
       <.panel id="burn-up-panel" title={gettext("Functions solved over time")}>
         <div
+          :if={!@lite}
           id="burn-up"
           data-i18n={Jason.encode!(burn_up_i18n())}
           phx-hook=".BurnUp"
@@ -404,6 +456,7 @@ defmodule DcompWeb.GameLive.Show do
         </div>
         <details
           id="burn-up-details"
+          open={@lite}
           phx-mounted={JS.ignore_attributes("open")}
           class="mt-3 text-xs text-base-content/70"
         >

@@ -85,6 +85,7 @@ defmodule DcompWeb.Layouts do
             </.link>
           <% end %>
           <.language_switcher />
+          <.lite_toggle />
           <.theme_toggle />
         </div>
       </nav>
@@ -97,6 +98,34 @@ defmodule DcompWeb.Layouts do
     </main>
 
     <.flash_group flash={@flash} />
+    """
+  end
+
+  @doc """
+  Switches the lightweight vintage version on and off. Both links are rendered and CSS shows the
+  one that applies (`html[data-lite]`), so it works from any page without passing the state in.
+  """
+  def lite_toggle(assigns) do
+    ~H"""
+    <span id="lite-toggle" class="text-xs font-medium">
+      <.link
+        href={~p"/lite/on"}
+        id="lite-on"
+        title={gettext("Plain, lightweight version of the site")}
+        class="lite-on rounded-md px-2 py-1 text-base-content/60 transition hover:text-base-content"
+      >
+        {gettext("Lite")}
+      </.link>
+      <.link
+        href={~p"/lite/off"}
+        id="lite-off"
+        aria-current="true"
+        title={gettext("Back to the full version of the site")}
+        class="lite-off rounded-md bg-base-200 px-2 py-1 text-base-content"
+      >
+        {gettext("Lite")} ✓
+      </.link>
+    </span>
     """
   end
 

@@ -1,5 +1,8 @@
 <!DOCTYPE html>
-<html lang={Gettext.get_locale(DcompWeb.Gettext) |> String.replace("_", "-")}>
+<html
+  lang={Gettext.get_locale(DcompWeb.Gettext) |> String.replace("_", "-")}
+  data-lite={assigns[:lite] && "true"}
+>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
