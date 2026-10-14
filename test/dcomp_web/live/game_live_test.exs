@@ -89,6 +89,11 @@ defmodule DcompWeb.GameLiveTest do
       refute has_element?(view, "#contribute-rom-sha1")
     end
 
+    test "shows the latest activity under the puzzle", %{view: view} do
+      assert has_element?(view, "#recent-feed li", "08000200")
+      assert has_element?(view, "#recent-feed li time[datetime]")
+    end
+
     test "pushes fresh data to the hooks after a sync", %{view: view, game: game} do
       Phoenix.PubSub.broadcast(Dcomp.PubSub, Sync.topic(game.slug), {:synced, game.slug})
       assert_push_event(view, "puzzle:data", %{mode: "size"})

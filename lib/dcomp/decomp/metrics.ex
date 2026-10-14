@@ -243,6 +243,8 @@ defmodule Dcomp.Decomp.Metrics do
   defp recent_activity(game) do
     from(e in Event,
       left_join: c in assoc(e, :contributor),
+      left_join: f in Func,
+      on: f.game_id == e.game_id and f.addr == e.addr,
       where: e.game_id == ^game.id and e.type in [:claim, :solve, :release, :expire],
       order_by: [desc: e.occurred_at, desc: e.inserted_at],
       limit: @activity,
@@ -250,6 +252,7 @@ defmodule Dcomp.Decomp.Metrics do
         id: e.id,
         type: e.type,
         addr: e.addr,
+        size: f.size,
         sha: e.sha,
         at: e.occurred_at,
         login: c.login,

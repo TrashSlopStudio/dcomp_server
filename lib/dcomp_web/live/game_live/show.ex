@@ -63,6 +63,9 @@ defmodule DcompWeb.GameLive.Show do
     end
   end
 
+  # Events in the live feed under the puzzle.
+  @recent 8
+
   # Loads everything the page shows. Small lists are streams reset on each refresh.
   defp load(socket) do
     game = Decomp.get_game!(socket.assigns.game.id)
@@ -81,6 +84,7 @@ defmodule DcompWeb.GameLive.Show do
     |> stream(:remaining, m.top_remaining, reset: true)
     |> stream(:strikes, m.strikes, reset: true)
     |> stream(:activity, m.recent_activity, reset: true)
+    |> stream(:recent, Enum.take(m.recent_activity, @recent), reset: true)
   end
 
   # Lite mode's puzzle: one character per function (or per bucket of them past ~1000), 50 per
@@ -370,6 +374,43 @@ defmodule DcompWeb.GameLive.Show do
             >
             </div>
           </div>
+          <ul
+            :if={!@lite}
+            id="recent-feed"
+            phx-update="stream"
+            aria-label={gettext("Latest activity")}
+            class="mt-3 divide-y divide-base-300 text-xs"
+          >
+            <li
+              :for={{id, e} <- @streams.recent}
+              id={id}
+              class="flex items-center gap-2 py-1.5"
+            >
+              <.icon name={event_icon(e.type)} class="size-3.5 shrink-0 text-base-content/50" />
+              <.person login={e.login} url={e.avatar_url} size="size-4" />
+              <span class="text-base-content/70">
+                {event_label(e.type)} <span class="font-mono">{e.addr}</span>
+                <span :if={e.size} class="text-base-content/50">· {bytes(e.size)}</span>
+              </span>
+              <a
+                :if={(e.type == :solve and e.sha) && commit_url(@game)}
+                href={commit_url(@game) <> e.sha}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={gettext("View the commit")}
+                class="font-mono text-primary hover:underline"
+              >
+                {String.slice(e.sha, 0, 7)}
+              </a>
+              <time
+                datetime={DateTime.to_iso8601(e.at)}
+                title={Calendar.strftime(e.at, "%Y-%m-%d %H:%M UTC")}
+                class="ml-auto whitespace-nowrap text-base-content/50"
+              >
+                {time_ago(e.at, @now)}
+              </time>
+            </li>
+          </ul>
           <details
             :if={!@lite}
             id="puzzle-list"
