@@ -5,6 +5,13 @@ config :bcrypt_elixir, :log_rounds, 1
 
 config :dcomp, :environment, :test
 
+# Sync tests clone local fixture repos into a throwaway dir; the syncer is started by tests.
+config :dcomp,
+  mirror_dir: Path.join(System.tmp_dir!(), "dcomp_test_mirrors"),
+  uploads_path: Path.join(System.tmp_dir!(), "dcomp_test_uploads"),
+  git_protocols: ["file"],
+  start_syncer: false
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used

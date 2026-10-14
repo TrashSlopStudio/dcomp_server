@@ -10,9 +10,15 @@ defmodule Dcomp.Accounts.User do
     field :hashed_password, :string, redact: true
     field :confirmed_at, :utc_datetime
     field :authenticated_at, :utc_datetime, virtual: true
+    # Never cast from params; promote through `Dcomp.Accounts.make_admin/1`.
+    field :role, Ecto.Enum, values: [:user, :admin], default: :user
 
     timestamps(type: :utc_datetime)
   end
+
+  @doc "Whether the user has the admin role."
+  def admin?(%__MODULE__{role: :admin}), do: true
+  def admin?(_), do: false
 
   @doc """
   A user changeset for registering or changing the email.

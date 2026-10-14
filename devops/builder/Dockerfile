@@ -77,7 +77,8 @@ FROM ${RUNNER_IMAGE}
 
 ARG DATABASE_URL
 
-RUN apt-get update -y && apt-get install -y libstdc++6 openssl ca-certificates libncurses5 locales \
+# git: game repos are mirrored at runtime (Dcomp.Decomp.Mirror)
+RUN apt-get update -y && apt-get install -y libstdc++6 openssl ca-certificates libncurses5 locales git \
   && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 # Set the locale

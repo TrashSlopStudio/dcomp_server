@@ -27,6 +27,57 @@ defmodule Dcomp.Accounts do
   end
 
   @doc """
+  Promotes the user with the given email to admin.
+
+  Returns `{:error, :not_found}` if nobody registered with that email.
+  """
+  def make_admin(email) when is_binary(email) do
+    case get_user_by_email(email) do
+      nil -> {:error, :not_found}
+      user -> user |> Ecto.Changeset.change(role: :admin) |> Repo.update()
+    end
+  end
+
+  @doc """
+  Creates a confirmed user with a password and the given role. Only for admins: there is no
+  public sign-up. `attrs` takes `:email` and `:password`.
+  """
+  def create_user(attrs, role) when role in [:user, :admin] do
+    %User{role: role, confirmed_at: DateTime.utc_now(:second)}
+    |> User.email_changeset(attrs)
+    |> User.password_changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc "Changeset behind the admin's new-user form (password not hashed, for live validation)."
+  def change_new_user(attrs \\ %{}) do
+    %User{}
+    |> User.email_changeset(attrs)
+    |> User.password_changeset(attrs, hash_password: false)
+  end
+
+  def list_users, do: Repo.all(from u in User, order_by: u.email)
+
+  @doc """
+  Sets a user's role. The last admin can't be demoted, so the site can't lock itself out.
+  """
+  def set_role(%User{} = user, role) when role in [:user, :admin] do
+    # Locking the admin rows serialises concurrent demotions, so two can't both see "2 admins".
+    {:ok, result} =
+      Repo.transaction(fn ->
+        admins = Repo.all(from u in User, where: u.role == :admin, lock: "FOR UPDATE")
+
+        if role == :user and user.role == :admin and length(admins) <= 1 do
+          {:error, :last_admin}
+        else
+          user |> Ecto.Changeset.change(role: role) |> Repo.update()
+        end
+      end)
+
+    result
+  end
+
+  @doc """
   Gets a user by email and password.
 
   ## Examples
@@ -59,6 +110,8 @@ defmodule Dcomp.Accounts do
 
   """
   def get_user!(id), do: Repo.get!(User, id)
+
+  def get_user(id), do: Repo.get(User, id)
 
   ## User registration
 

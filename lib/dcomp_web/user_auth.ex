@@ -212,6 +212,76 @@ defmodule DcompWeb.UserAuth do
     end
   end
 
+  @doc """
+  Plug for routes that require an admin. Pipe after `require_authenticated_user`.
+  """
+  def require_admin(conn, _opts) do
+    if admin_scope?(conn.assigns.current_scope) do
+      conn
+    else
+      conn
+      |> put_flash(:error, "You must be an admin to access this page.")
+      |> redirect(to: ~p"/")
+      |> halt()
+    end
+  end
+
+  @doc """
+  LiveView `on_mount` hooks, for `live_session`s.
+
+    * `:mount_current_scope` - assigns `current_scope` (`nil` when logged out); never halts.
+    * `:require_admin` - same, then redirects to `/` unless the user is an admin.
+  """
+  def on_mount(:mount_current_scope, _params, session, socket) do
+    {:cont, mount_current_scope(socket, session)}
+  end
+
+  def on_mount(:require_admin, _params, session, socket) do
+    socket = mount_current_scope(socket, session)
+
+    if admin_scope?(socket.assigns.current_scope) do
+      {:cont, attach_admin_recheck(socket)}
+    else
+      {:halt,
+       socket
+       |> Phoenix.LiveView.put_flash(:error, "You must be an admin to access this page.")
+       |> Phoenix.LiveView.redirect(to: ~p"/")}
+    end
+  end
+
+  # The role is read at mount only, so a connected admin page would keep working after a demotion.
+  # Re-read it from the database before every event.
+  defp attach_admin_recheck(socket) do
+    Phoenix.LiveView.attach_hook(socket, :recheck_admin, :handle_event, fn _event,
+                                                                           _params,
+                                                                           socket ->
+      user = Accounts.get_user(socket.assigns.current_scope.user.id)
+
+      if Accounts.User.admin?(user) do
+        {:cont, socket}
+      else
+        {:halt,
+         socket
+         |> Phoenix.LiveView.put_flash(:error, "You must be an admin to access this page.")
+         |> Phoenix.LiveView.redirect(to: ~p"/")}
+      end
+    end)
+  end
+
+  defp mount_current_scope(socket, session) do
+    Phoenix.Component.assign_new(socket, :current_scope, fn ->
+      with token when is_binary(token) <- session["user_token"],
+           {user, _inserted_at} <- Accounts.get_user_by_session_token(token) do
+        Scope.for_user(user)
+      else
+        _ -> nil
+      end
+    end)
+  end
+
+  defp admin_scope?(%Scope{user: user}), do: Accounts.User.admin?(user)
+  defp admin_scope?(_), do: false
+
   defp maybe_store_return_to(%{method: "GET"} = conn) do
     put_session(conn, :user_return_to, current_path(conn))
   end

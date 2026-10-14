@@ -1,0 +1,277 @@
+defmodule DcompWeb.GameComponents do
+  @moduledoc "Small pieces shared by the game pages, plus the number/time formatting they use."
+  use DcompWeb, :html
+
+  ## Components
+
+  attr :id, :string, required: true
+  attr :text, :string, required: true, doc: "shown and copied as is"
+
+  @doc "A code block with a button that copies its text to the clipboard."
+  def code_block(assigns) do
+    ~H"""
+    <div class="relative mt-1.5 text-xs">
+      <pre class="overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-base-300 py-2.5 pl-3 pr-16 font-mono"><code id={@id}>{@text}</code></pre>
+      <button
+        id={"#{@id}-copy"}
+        type="button"
+        phx-hook=".CopyButton"
+        data-target={"##{@id}"}
+        aria-label={gettext("Copy to clipboard")}
+        class="group/copy absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-md bg-base-100/80 px-2 py-1 font-sans text-base-content/70 transition hover:bg-base-100 hover:text-primary"
+      >
+        <.icon name="hero-clipboard-document" class="size-3.5" />
+        <span class="group-data-[copied]/copy:hidden">{gettext("Copy")}</span>
+        <span class="hidden group-data-[copied]/copy:inline">{gettext("Copied")}</span>
+      </button>
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".CopyButton">
+        export default {
+          mounted() {
+            this.el.addEventListener("click", async () => {
+              const code = document.querySelector(this.el.dataset.target)
+              try { await navigator.clipboard.writeText(code.textContent) } catch (_) { return }
+              this.el.dataset.copied = ""
+              clearTimeout(this.timer)
+              this.timer = setTimeout(() => delete this.el.dataset.copied, 1500)
+            })
+          },
+          destroyed() { clearTimeout(this.timer) }
+        }
+      </script>
+    </div>
+    """
+  end
+
+  attr :login, :string, default: nil, doc: "GitHub login; nil renders the anonymous icon"
+  attr :url, :string, default: nil
+  attr :size, :string, default: "size-6"
+  attr :link, :boolean, default: true
+
+  def avatar(%{login: nil} = assigns) do
+    ~H"""
+    <span
+      class={[
+        "inline-flex items-center justify-center rounded-full bg-base-300 text-base-content/50",
+        @size
+      ]}
+      title={gettext("Unknown contributor")}
+    >
+      <.icon name="hero-user-solid" class="size-3/5" />
+    </span>
+    """
+  end
+
+  def avatar(assigns) do
+    ~H"""
+    <img
+      src={@url || Dcomp.Decomp.Contributor.avatar_url_for(@login)}
+      alt=""
+      loading="lazy"
+      class={["rounded-full bg-base-300 object-cover", @size]}
+    />
+    """
+  end
+
+  @doc "Avatar plus login, linking to the GitHub profile (or 'Unknown' when anonymous)."
+  attr :login, :string, default: nil
+  attr :url, :string, default: nil
+  attr :size, :string, default: "size-6"
+
+  def person(%{login: nil} = assigns) do
+    ~H"""
+    <span class="inline-flex items-center gap-2 text-base-content/60">
+      <.avatar size={@size} /> {gettext("Unknown")}
+    </span>
+    """
+  end
+
+  def person(assigns) do
+    ~H"""
+    <a
+      href={"https://github.com/#{@login}"}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="inline-flex items-center gap-2 transition hover:text-primary"
+    >
+      <.avatar login={@login} url={@url} size={@size} />
+      <span class="truncate">{@login}</span>
+    </a>
+    """
+  end
+
+  attr :value, :float, required: true, doc: "0..100"
+  attr :class, :string, default: nil
+
+  def progress_bar(assigns) do
+    ~H"""
+    <div
+      class={["h-2 w-full overflow-hidden rounded-full bg-base-300", @class]}
+      role="progressbar"
+      aria-valuenow={@value}
+      aria-valuemin="0"
+      aria-valuemax="100"
+    >
+      <div
+        class="h-full rounded-full bg-primary transition-[width] duration-700"
+        style={"width: #{@value}%"}
+      />
+    </div>
+    """
+  end
+
+  attr :id, :string, default: nil
+  attr :label, :string, required: true
+  attr :value, :string, required: true
+  attr :sub, :string, default: nil
+  attr :icon, :string, default: nil
+
+  def stat(assigns) do
+    ~H"""
+    <div id={@id} class="rounded-2xl border border-base-300 bg-base-200/50 p-4">
+      <div class="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-base-content/60">
+        <.icon :if={@icon} name={@icon} class="size-4" />
+        {@label}
+      </div>
+      <div class="mt-1 text-2xl font-semibold tracking-tight">{@value}</div>
+      <div :if={@sub} class="mt-0.5 text-xs text-base-content/60">{@sub}</div>
+    </div>
+    """
+  end
+
+  attr :id, :string, default: nil
+  attr :title, :string, required: true
+  attr :class, :string, default: nil
+  slot :inner_block, required: true
+  slot :aside
+
+  def panel(assigns) do
+    ~H"""
+    <section id={@id} class={["rounded-2xl border border-base-300 bg-base-200/50 p-5", @class]}>
+      <div class="mb-3 flex items-center justify-between gap-2">
+        <h2 class="text-sm font-semibold tracking-wide">{@title}</h2>
+        {render_slot(@aside)}
+      </div>
+      {render_slot(@inner_block)}
+    </section>
+    """
+  end
+
+  attr :active, :atom, required: true, values: [:games, :settings, :users]
+
+  def admin_tabs(assigns) do
+    ~H"""
+    <nav
+      id="admin-tabs"
+      class="flex gap-1 rounded-xl border border-base-300 bg-base-200/50 p-1 text-sm"
+    >
+      <.link
+        :for={
+          {key, label, path} <- [
+            {:games, "Games", ~p"/admin/games"},
+            {:settings, "Settings", ~p"/admin/settings"},
+            {:users, "Users", ~p"/admin/users"}
+          ]
+        }
+        id={"admin-tab-#{key}"}
+        navigate={path}
+        class={[
+          "flex-1 rounded-lg px-4 py-2 text-center font-medium transition",
+          if(@active == key,
+            do: "bg-base-100 shadow",
+            else: "text-base-content/60 hover:text-base-content"
+          )
+        ]}
+      >
+        {label}
+      </.link>
+    </nav>
+    """
+  end
+
+  ## Formatting
+
+  def image_url(%{image_path: nil}), do: nil
+  def image_url(%{image_path: name}), do: "/uploads/" <> name
+
+  # Argentine Spanish writes 1.234,5 where English writes 1,234.5.
+  defp separators do
+    if Gettext.get_locale(DcompWeb.Gettext) == "es_AR", do: {".", ","}, else: {",", "."}
+  end
+
+  def decimal(x) do
+    {_, point} = separators()
+    x |> Kernel.*(1.0) |> :erlang.float_to_binary(decimals: 1) |> String.replace(".", point)
+  end
+
+  def number(n) when is_integer(n) do
+    {thousands, _} = separators()
+
+    n
+    |> Integer.to_string()
+    |> String.reverse()
+    |> String.replace(~r/(\d{3})(?=\d)/, "\\1" <> thousands)
+    |> String.reverse()
+  end
+
+  def number(n) when is_float(n), do: n |> round() |> number()
+  def number(nil), do: "–"
+
+  def bytes(n) when n >= 1_048_576, do: "#{decimal(Float.round(n / 1_048_576, 1))} MiB"
+  def bytes(n) when n >= 1024, do: "#{decimal(Float.round(n / 1024, 1))} KiB"
+  def bytes(n), do: "#{n} B"
+
+  def percent(p), do: "#{decimal(p)}%"
+
+  def duration(nil), do: "–"
+  def duration(s) when s < 3600, do: "#{max(round(s / 60), 1)} min"
+  def duration(s) when s < 172_800, do: "#{decimal(Float.round(s / 3600, 1))} h"
+  def duration(s), do: days(Float.round(s / 86_400, 1))
+
+  def eta(nil), do: "–"
+  def eta(days) when days < 1, do: gettext("< 1 day")
+  def eta(days) when days < 120, do: days(round(days))
+  def eta(days), do: gettext("%{n} months", n: decimal(Float.round(days / 30, 1)))
+
+  defp days(n) when is_integer(n), do: ngettext("%{n} day", "%{n} days", n, n: n)
+  defp days(n), do: gettext("%{n} days", n: decimal(n))
+
+  @doc "Coarse relative time (`5 min ago`); the page re-renders on every sync."
+  def time_ago(nil, _now), do: gettext("never")
+
+  def time_ago(%DateTime{} = at, now) do
+    s = DateTime.diff(now, at)
+
+    cond do
+      s < 60 -> gettext("just now")
+      s < 3600 -> gettext("%{n} min ago", n: div(s, 60))
+      s < 86_400 -> gettext("%{n} h ago", n: div(s, 3600))
+      true -> ngettext("%{n} day ago", "%{n} days ago", div(s, 86_400), n: div(s, 86_400))
+    end
+  end
+
+  def time_left(nil, _now), do: "–"
+
+  def time_left(%DateTime{} = at, now) do
+    case DateTime.diff(at, now) do
+      s when s <= 0 -> gettext("expired")
+      s when s < 3600 -> gettext("%{n} min left", n: div(s, 60))
+      s -> gettext("%{n} h left", n: div(s, 3600))
+    end
+  end
+
+  # Verbs in the activity feed ("ana claimed ..."); the context keeps them apart from the status
+  # adjectives below, which Spanish writes differently.
+  def event_label(:claim), do: pgettext("activity", "claimed")
+  def event_label(:solve), do: pgettext("activity", "solved")
+  def event_label(:release), do: pgettext("activity", "released")
+  def event_label(:expire), do: pgettext("activity", "claim expired")
+
+  def status_label(:unclaimed), do: pgettext("status", "unclaimed")
+  def status_label(:claimed), do: pgettext("status", "claimed")
+  def status_label(:solved), do: pgettext("status", "solved")
+
+  def event_icon(:claim), do: "hero-hand-raised"
+  def event_icon(:solve), do: "hero-check-circle"
+  def event_icon(:release), do: "hero-arrow-uturn-left"
+  def event_icon(:expire), do: "hero-clock"
+end

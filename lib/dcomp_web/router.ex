@@ -6,6 +6,7 @@ defmodule DcompWeb.Router do
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
+    plug DcompWeb.Locale
     plug :fetch_live_flash
     plug :put_root_layout, html: {DcompWeb.Layouts, :root}
     plug :protect_from_forgery
@@ -17,16 +18,37 @@ defmodule DcompWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :require_api_key do
+    plug DcompWeb.Plugs.RequireApiKey
+  end
+
   scope "/", DcompWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live_session :public,
+      on_mount: [{DcompWeb.Locale, :default}, {DcompWeb.UserAuth, :mount_current_scope}] do
+      live "/", GameLive.Index
+      live "/games/:slug", GameLive.Show
+    end
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", DcompWeb do
-  #   pipe_through :api
-  # end
+  scope "/", DcompWeb do
+    pipe_through :browser
+
+    get "/locale/:locale", LocaleController, :update
+  end
+
+  # Uploaded game images. No session needed, so no pipeline.
+  scope "/", DcompWeb do
+    get "/uploads/:name", UploadController, :show
+  end
+
+  # Machine-to-machine (GitHub Actions): no session or CSRF, authenticated by the global API key.
+  scope "/api", DcompWeb do
+    pipe_through [:api, :require_api_key]
+
+    post "/games/:slug/sync", SyncController, :create
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:dcomp, :dev_routes) do
@@ -45,14 +67,22 @@ defmodule DcompWeb.Router do
     end
   end
 
-  ## Authentication routes
+  # Admin area: logged in AND admin. The plugs guard the first (HTTP) request; the live_session's
+  # on_mount hook re-checks on every live navigation, where plugs don't run.
+  scope "/admin", DcompWeb.AdminLive, as: :admin do
+    pipe_through [:browser, :require_authenticated_user, :require_admin]
 
-  scope "/", DcompWeb do
-    pipe_through [:browser, :redirect_if_user_is_authenticated]
-
-    get "/users/register", UserRegistrationController, :new
-    post "/users/register", UserRegistrationController, :create
+    live_session :admin,
+      on_mount: [{DcompWeb.Locale, :default}, {DcompWeb.UserAuth, :require_admin}] do
+      live "/games", Games, :index
+      live "/games/new", Games, :new
+      live "/games/:id/edit", Games, :edit
+      live "/settings", Settings, :edit
+      live "/users", Users, :index
+    end
   end
+
+  ## Authentication routes
 
   scope "/", DcompWeb do
     pipe_through [:browser, :require_authenticated_user]
