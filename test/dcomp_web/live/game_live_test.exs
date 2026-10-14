@@ -79,6 +79,7 @@ defmodule DcompWeb.GameLiveTest do
       assert has_element?(view, "#contribute")
       assert has_element?(view, "#contribute-clone", "git clone #{game.repo_url}")
       assert has_element?(view, "#contribute a[href='#{game.repo_url}']")
+      refute has_element?(view, "#contribute-rom-sha1")
     end
 
     test "pushes fresh data to the hooks after a sync", %{view: view, game: game} do
@@ -86,6 +87,13 @@ defmodule DcompWeb.GameLiveTest do
       assert_push_event(view, "puzzle:data", %{mode: "size"})
       assert_push_event(view, "burnup:data", %{points: [_ | _]})
     end
+  end
+
+  test "shows the expected ROM SHA1 when the game has one", %{conn: conn} do
+    sha = String.duplicate("ab", 20)
+    game = synced_game_fixture() |> Ecto.Changeset.change(rom_sha1: sha) |> Dcomp.Repo.update!()
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}")
+    assert has_element?(view, "#contribute-rom-sha1", sha)
   end
 
   test "an unknown game is a 404", %{conn: conn} do

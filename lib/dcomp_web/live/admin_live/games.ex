@@ -153,6 +153,12 @@ defmodule DcompWeb.AdminLive.Games do
                 placeholder="drill-dozer"
               />
             </div>
+            <.input
+              field={@form[:rom_sha1]}
+              type="text"
+              label="Expected ROM SHA1 (optional)"
+              placeholder="40 hex characters, shown to contributors to verify their own dump"
+            />
 
             <div class="fieldset mb-2">
               <span class="label mb-1">Puzzle image (PNG, JPEG or WebP, up to 5 MB)</span>

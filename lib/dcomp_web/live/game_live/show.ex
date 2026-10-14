@@ -303,6 +303,12 @@ defmodule DcompWeb.GameLive.Show do
               <li>
                 Follow the setup in <code class="rounded bg-base-300 px-1.5 py-0.5">AGENTS.md</code>
                 (compiler tools and your own legally obtained ROM as <code class="rounded bg-base-300 px-1.5 py-0.5">baserom.gba</code>).
+                <span :if={@game.rom_sha1}>
+                  Its SHA1 must be <code
+                    id="contribute-rom-sha1"
+                    class="break-all rounded bg-base-300 px-1.5 py-0.5"
+                  >{@game.rom_sha1}</code>.
+                </span>
               </li>
               <li>
                 Run <code class="rounded bg-base-300 px-1.5 py-0.5">claude</code>

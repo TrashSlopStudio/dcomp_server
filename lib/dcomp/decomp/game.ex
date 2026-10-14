@@ -13,6 +13,7 @@ defmodule Dcomp.Decomp.Game do
     field :repo_url, :string
     field :branch, :string, default: "main"
     field :image_path, :string
+    field :rom_sha1, :string
     field :last_synced_sha, :string
     field :last_synced_at, :utc_datetime
     field :last_sync_error, :string
@@ -29,8 +30,10 @@ defmodule Dcomp.Decomp.Game do
 
   def changeset(game, attrs) do
     game
-    |> cast(attrs, [:name, :slug, :repo_url, :branch])
+    |> cast(attrs, [:name, :slug, :repo_url, :branch, :rom_sha1])
     |> validate_required([:name, :repo_url, :branch])
+    |> update_change(:rom_sha1, &(&1 |> String.trim() |> String.downcase()))
+    |> validate_format(:rom_sha1, ~r/^[0-9a-f]{40}$/, message: "must be 40 hex characters")
     |> put_default_slug()
     |> validate_format(:slug, ~r/^[a-z0-9]+(-[a-z0-9]+)*$/,
       message: "use lowercase letters, numbers and dashes"

@@ -58,6 +58,16 @@ defmodule Dcomp.DecompTest do
       assert %{slug: ["has already been taken"]} = errors_on(cs)
     end
 
+    test "rom_sha1 is normalised and must be 40 hex characters" do
+      sha = String.duplicate("AB", 20)
+      attrs = %{name: "G", repo_url: "https://example.com/o/r"}
+
+      assert {:ok, game} = Decomp.create_game(Map.put(attrs, :rom_sha1, " " <> sha <> " "))
+      assert game.rom_sha1 == String.downcase(sha)
+      assert {:error, cs} = Decomp.create_game(%{attrs | name: "H"} |> Map.put(:rom_sha1, "xyz"))
+      assert %{rom_sha1: [_]} = errors_on(cs)
+    end
+
     test "repo_url must be https (git clones it)" do
       for url <- ["file:///etc", "git@github.com:a/b.git", "ext::sh -c id", "http://x.io/a"] do
         assert {:error, cs} = Decomp.create_game(%{@valid | repo_url: url})
