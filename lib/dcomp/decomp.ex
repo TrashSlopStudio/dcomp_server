@@ -62,6 +62,8 @@ defmodule Dcomp.Decomp do
 
   def get_game!(id), do: Repo.get!(Game, id)
 
+  def get_game(id), do: Repo.get(Game, id)
+
   def get_game_by_slug(slug), do: Repo.get_by(Game, slug: slug)
 
   def get_game_by_slug!(slug), do: Repo.get_by!(Game, slug: slug)

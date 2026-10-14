@@ -27,15 +27,15 @@ defmodule DcompWeb.AdminLive.Users do
   @impl true
   def handle_event("set-role", %{"id" => id, "role" => role}, socket)
       when role in ~w(user admin) do
-    user = Accounts.get_user!(id)
+    with_user(socket, id, fn user ->
+      case Accounts.set_role(user, String.to_existing_atom(role)) do
+        {:ok, user} ->
+          {:noreply, stream_insert(socket, :users, user)}
 
-    case Accounts.set_role(user, String.to_existing_atom(role)) do
-      {:ok, user} ->
-        {:noreply, stream_insert(socket, :users, user)}
-
-      {:error, :last_admin} ->
-        {:noreply, put_flash(socket, :error, "There must be at least one admin.")}
-    end
+        {:error, :last_admin} ->
+          {:noreply, put_flash(socket, :error, "There must be at least one admin.")}
+      end
+    end)
   end
 
   def handle_event("validate-new", %{"user" => params}, socket) do
@@ -57,26 +57,31 @@ defmodule DcompWeb.AdminLive.Users do
   end
 
   def handle_event("open-password", %{"id" => id}, socket) do
-    user = Accounts.get_user!(id)
-
-    {:noreply,
-     socket
-     |> close_password()
-     |> assign(:password_user_id, user.id)
-     |> assign(:password_form, password_form(user))
-     |> stream_insert(:users, user)}
+    with_user(socket, id, fn user ->
+      {:noreply,
+       socket
+       |> close_password()
+       |> assign(:password_user_id, user.id)
+       |> assign(:password_form, password_form(user))
+       |> stream_insert(:users, user)}
+    end)
   end
 
   def handle_event("close-password", _params, socket), do: {:noreply, close_password(socket)}
 
   def handle_event("validate-password", %{"password" => params}, socket) do
-    user = Accounts.get_user!(socket.assigns.password_user_id)
-    {:noreply, assign(socket, :password_form, password_form(user, params, :validate))}
+    with_user(socket, socket.assigns.password_user_id, fn user ->
+      {:noreply, assign(socket, :password_form, password_form(user, params, :validate))}
+    end)
   end
 
   def handle_event("set-password", %{"password" => params}, socket) do
-    user = Accounts.get_user!(socket.assigns.password_user_id)
+    with_user(socket, socket.assigns.password_user_id, fn user ->
+      set_password(socket, user, params)
+    end)
+  end
 
+  defp set_password(socket, user, params) do
     case Accounts.update_user_password(user, params) do
       {:ok, {user, _expired_tokens}} ->
         {:noreply,
@@ -107,7 +112,25 @@ defmodule DcompWeb.AdminLive.Users do
     socket
     |> assign(:password_user_id, nil)
     |> assign(:password_form, nil)
-    |> stream_insert(:users, Accounts.get_user!(id))
+    |> then(fn socket ->
+      if user = Accounts.get_user(id), do: stream_insert(socket, :users, user), else: socket
+    end)
+  end
+
+  # The user may have been removed (or the id be stale) since the page loaded: say so and
+  # refresh the list instead of crashing the LiveView.
+  defp with_user(socket, id, fun) do
+    case id && Accounts.get_user(id) do
+      %Accounts.User{} = user ->
+        fun.(user)
+
+      _ ->
+        {:noreply,
+         socket
+         |> assign(password_user_id: nil, password_form: nil)
+         |> stream(:users, Accounts.list_users(), reset: true)
+         |> put_flash(:error, "That user no longer exists.")}
+    end
   end
 
   @impl true

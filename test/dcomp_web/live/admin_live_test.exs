@@ -167,6 +167,16 @@ defmodule DcompWeb.AdminLiveTest do
       assert_received {:"$gen_cast", {:sync, ^slug}}
     end
 
+    test "a game deleted in another tab doesn't crash the page", %{conn: conn} do
+      game = game_fixture()
+      {:ok, view, _} = live(conn, ~p"/admin/games")
+      Repo.delete!(game)
+
+      html = view |> element("#delete-#{game.id}") |> render_click()
+      assert html =~ "no longer exists"
+      refute has_element?(view, "#games-#{game.id}")
+    end
+
     test "deletes a game and its image", %{conn: conn} do
       game = game_fixture()
       Repo.update!(Game.image_changeset(game, "x"))
@@ -289,6 +299,16 @@ defmodule DcompWeb.AdminLiveTest do
 
       assert Accounts.get_user_by_email_and_password(other.email, "brand new password")
       refute has_element?(view, "#password-form-#{other.id}")
+    end
+
+    test "a user removed in another tab doesn't crash the page", %{conn: conn} do
+      other = user_fixture()
+      {:ok, view, _} = live(conn, ~p"/admin/users")
+      Repo.delete!(other)
+
+      html = view |> element("#promote-#{other.id}") |> render_click()
+      assert html =~ "no longer exists"
+      refute has_element?(view, "#users-#{other.id}")
     end
 
     test "the last admin can't be demoted", %{conn: conn, admin: admin} do

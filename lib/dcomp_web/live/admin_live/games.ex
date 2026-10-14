@@ -54,17 +54,35 @@ defmodule DcompWeb.AdminLive.Games do
   end
 
   def handle_event("sync", %{"id" => id}, socket) do
-    game = Decomp.get_game!(id)
-    Syncer.nudge(game.slug)
-    {:noreply, put_flash(socket, :info, "Sync queued for #{game.name}.")}
+    case Decomp.get_game(id) do
+      nil ->
+        {:noreply, gone(socket, id)}
+
+      game ->
+        Syncer.nudge(game.slug)
+        {:noreply, put_flash(socket, :info, "Sync queued for #{game.name}.")}
+    end
   end
 
   def handle_event("delete", %{"id" => id}, socket) do
-    game = Decomp.get_game!(id)
-    {:ok, _} = Decomp.delete_game(game)
-    Uploads.delete(game.image_path)
+    case Decomp.get_game(id) do
+      nil ->
+        {:noreply, gone(socket, id)}
 
-    {:noreply, socket |> stream_delete(:games, game) |> put_flash(:info, "#{game.name} deleted.")}
+      game ->
+        {:ok, _} = Decomp.delete_game(game)
+        Uploads.delete(game.image_path)
+
+        {:noreply,
+         socket |> stream_delete(:games, game) |> put_flash(:info, "#{game.name} deleted.")}
+    end
+  end
+
+  # Deleted in another tab since this page loaded.
+  defp gone(socket, id) do
+    socket
+    |> stream_delete_by_dom_id(:games, "games-#{id}")
+    |> put_flash(:error, "That game no longer exists.")
   end
 
   defp save(socket, :new, params) do
