@@ -40,6 +40,7 @@ defmodule DcompWeb.GameLiveTest do
     test "renders the puzzle, completion and metrics", %{view: view, game: game} do
       assert has_element?(view, "#game-title", game.name)
       assert has_element?(view, "#puzzle[phx-hook]")
+      assert has_element?(view, "#puzzle-list #puzzle-list-body")
       assert has_element?(view, "#completion", "30.0%")
       assert has_element?(view, "#stat-solved", "2")
       assert has_element?(view, "#stat-claimed", "1")

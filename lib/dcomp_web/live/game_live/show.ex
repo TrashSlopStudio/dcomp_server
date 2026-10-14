@@ -205,6 +205,12 @@ defmodule DcompWeb.GameLive.Show do
             >
             </div>
           </div>
+          <details id="puzzle-list" class="mt-3 text-xs text-base-content/70">
+            <summary class="cursor-pointer select-none hover:text-primary">
+              View all functions as a list
+            </summary>
+            <div id="puzzle-list-body" phx-update="ignore" class="mt-2 max-h-96 overflow-auto"></div>
+          </details>
           <ul
             id="puzzle-legend"
             class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-base-content/70"
@@ -641,6 +647,13 @@ defmodule DcompWeb.GameLive.Show do
             this.w = 0
             this.h = 0
 
+            // Keyboard and screen-reader equivalent of the hover tooltips: every function in a table.
+            this.listEl = document.getElementById("puzzle-list")
+            this.listBody = document.getElementById("puzzle-list-body")
+            this.listLimit = 200
+            this.onToggle = () => this.fillList()
+            this.listEl.addEventListener("toggle", this.onToggle)
+
             this.canvas.addEventListener("mousemove", e => this.onMove(e))
             this.canvas.addEventListener("mouseleave", () => this.setHover(null))
             this.ro = new ResizeObserver(() => this.layout())
@@ -655,6 +668,48 @@ defmodule DcompWeb.GameLive.Show do
           destroyed() {
             this.ro && this.ro.disconnect()
             this.theme && this.theme.disconnect()
+            this.listEl && this.listEl.removeEventListener("toggle", this.onToggle)
+          },
+
+          // Built with DOM APIs (never innerHTML) and only while the list is open.
+          fillList() {
+            if (!this.listEl.open) return
+            const table = document.createElement("table")
+            table.className = "w-full text-left"
+            const cap = document.createElement("caption")
+            cap.className = "sr-only"
+            cap.textContent = `${this.name} functions`
+            table.append(cap)
+            const hr = table.createTHead().insertRow()
+            for (const t of ["Address", "Size", "Status", "Contributor"]) {
+              const th = document.createElement("th")
+              th.scope = "col"
+              th.className = "sticky top-0 bg-base-100 py-1 pr-3 font-medium text-base-content/50"
+              th.textContent = t
+              hr.append(th)
+            }
+            const tb = table.createTBody()
+            const n = Math.min(this.pieces.length, this.listLimit)
+            for (let i = 0; i < n; i++) {
+              const p = this.pieces[i]
+              const tr = tb.insertRow()
+              const who = p[3] == null ? "" : this.people[p[3]].login
+              for (const v of [p[0], p[1] + " B", NAMES[p[2]], who]) {
+                const td = tr.insertCell()
+                td.className = "py-0.5 pr-3"
+                td.textContent = v
+              }
+            }
+            const nodes = [table]
+            if (n < this.pieces.length) {
+              const b = document.createElement("button")
+              b.type = "button"
+              b.className = "mt-2 text-primary underline"
+              b.textContent = `Show more (${n} of ${this.pieces.length})`
+              b.addEventListener("click", () => { this.listLimit += 200; this.fillList() })
+              nodes.push(b)
+            }
+            this.listBody.replaceChildren(...nodes)
           },
 
           setData(d) {
@@ -662,6 +717,7 @@ defmodule DcompWeb.GameLive.Show do
             this.people = d.people
             this.mode = d.mode
             this.name = d.name
+            this.fillList()
             if (d.image === this.imgUrl && this.img) return this.layout()
             this.imgUrl = d.image
             this.img = this.placeholder()
