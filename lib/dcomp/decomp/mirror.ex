@@ -15,6 +15,10 @@ defmodule Dcomp.Decomp.Mirror do
   def fetch(%Game{repo_url: url} = game) do
     dir = dir(game)
 
+    # A clone killed midway leaves a directory that isn't a repo; start over instead of failing
+    # on it forever.
+    if File.dir?(dir) and not bare_repo?(dir), do: File.rm_rf!(dir)
+
     if File.dir?(dir) do
       # The URL can be edited after the first clone, so point origin at the current one.
       with {_, 0} <- git(["-C", dir, "remote", "set-url", "origin", "--", url]) do
@@ -26,6 +30,11 @@ defmodule Dcomp.Decomp.Mirror do
       File.mkdir_p!(Path.dirname(dir))
       ok(git(["clone", "--mirror", "--quiet", "--", url, dir], safe: true))
     end
+  end
+
+  # `--is-bare-repository` prints "true" only for a bare repo at `dir` itself (not a parent's).
+  defp bare_repo?(dir) do
+    match?({"true\n", 0}, git(["-C", dir, "rev-parse", "--is-bare-repository"]))
   end
 
   @doc "Deletes the local mirror (the slug is validated to lowercase letters, digits and dashes)."

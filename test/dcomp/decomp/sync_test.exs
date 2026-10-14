@@ -136,6 +136,11 @@ defmodule Dcomp.Decomp.SyncTest do
     refute Repo.exists?(from e in Event, where: e.game_id == ^game.id and e.sha == ^old)
   end
 
+  test "recovers from a mirror directory left by an interrupted clone", %{game: game} do
+    File.mkdir_p!(Dcomp.Decomp.Mirror.dir(game))
+    assert {:ok, _} = Sync.run(game)
+  end
+
   test "editing the repo URL points the mirror at the new one", %{game: game} do
     {:ok, game} = Sync.run(game)
     other = GitFixture.pool_repo!()
