@@ -49,8 +49,8 @@ defmodule Dcomp.Decomp.Sync do
   defp do_run(game) do
     with :ok <- Mirror.fetch(game),
          {:ok, head} <- Mirror.head(game),
-         {:ok, state} <- read_state(game, head) do
-      {commits, rebuild?} = commits_since(game, head)
+         {:ok, state} <- read_state(game, head),
+         {:ok, {commits, rebuild?}} <- commits_since(game, head) do
       events = Enum.flat_map(commits, &events_for(game, &1))
       persist(game, head, state, events, rebuild?)
     end
@@ -176,12 +176,16 @@ defmodule Dcomp.Decomp.Sync do
   # `rebuild?` is true when the branch no longer contains the last synced commit (force-push or
   # branch change): the whole history is replayed and the old events are dropped.
   defp commits_since(%Game{last_synced_sha: nil} = game, head),
-    do: {Mirror.log(game, nil, head), false}
+    do: history(game, nil, head, false)
 
   defp commits_since(%Game{last_synced_sha: from} = game, head) do
     if Mirror.ancestor?(game, from, head),
-      do: {Mirror.log(game, from, head), false},
-      else: {Mirror.log(game, nil, head), true}
+      do: history(game, from, head, false),
+      else: history(game, nil, head, true)
+  end
+
+  defp history(game, from, head, rebuild?) do
+    with {:ok, commits} <- Mirror.log(game, from, head), do: {:ok, {commits, rebuild?}}
   end
 
   # Returns [%{type, addr, sha, at, login}] for one commit.

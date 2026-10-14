@@ -81,25 +81,25 @@ defmodule Dcomp.Decomp.Mirror do
   Follows the first parent, so a merge commit reports the whole change a PR brought in.
   Each change is `{status, path}` with status `"A"`, `"M"` or `"D"`.
   """
-  @spec log(Game.t(), String.t() | nil, String.t()) :: [commit]
+  @spec log(Game.t(), String.t() | nil, String.t()) :: {:ok, [commit]} | {:error, String.t()}
   def log(game, from, to) do
     range = if from, do: "#{from}..#{to}", else: to
 
-    {out, 0} =
-      git([
-        "-C",
-        dir(game),
-        "log",
-        "--reverse",
-        "--first-parent",
-        "-m",
-        "--no-renames",
-        "--name-status",
-        "--format=%x01%H%x02%cI",
-        range
-      ])
-
-    out |> String.split("\x01", trim: true) |> Enum.map(&parse_commit/1)
+    case git([
+           "-C",
+           dir(game),
+           "log",
+           "--reverse",
+           "--first-parent",
+           "-m",
+           "--no-renames",
+           "--name-status",
+           "--format=%x01%H%x02%cI",
+           range
+         ]) do
+      {out, 0} -> {:ok, out |> String.split("\x01", trim: true) |> Enum.map(&parse_commit/1)}
+      {out, _} -> {:error, "git log failed: #{String.trim(out)}"}
+    end
   end
 
   defp parse_commit(block) do

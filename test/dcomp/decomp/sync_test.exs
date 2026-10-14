@@ -164,6 +164,12 @@ defmodule Dcomp.Decomp.SyncTest do
     assert Repo.aggregate(from(s in Strike, where: s.game_id == ^game.id), :count) == 0
   end
 
+  test "a failing git log is an error, not a crash", %{game: game} do
+    {:ok, game} = Sync.run(game)
+    bad = String.duplicate("0", 40)
+    assert {:error, "git log failed" <> _} = Dcomp.Decomp.Mirror.log(game, bad, "main")
+  end
+
   test "records an error when the repo has no functions.csv", %{dir: dir, game: game} do
     GitFixture.commit!(dir, "break", %{"functions.csv" => :delete})
     assert {:error, msg} = Sync.run(game)
