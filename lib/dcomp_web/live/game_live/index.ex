@@ -11,11 +11,16 @@ defmodule DcompWeb.GameLive.Index do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} wide>
+      <div id="home-backdrop" class="aurora" aria-hidden="true">
+        <span class="aurora-blob"></span>
+        <span class="aurora-blob"></span>
+        <span class="aurora-blob"></span>
+      </div>
       <section
         id="hero"
         class="relative overflow-hidden rounded-3xl border border-base-300 bg-base-200/50 px-6 py-14 text-center sm:px-12"
       >
-        <div class="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-accent/15" />
+        <div class="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-info/10" />
         <div class="relative">
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
             Community decompilation

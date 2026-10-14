@@ -10,6 +10,7 @@ defmodule DcompWeb.GameLiveTest do
     test "shows an empty state with no games", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
       assert has_element?(view, "#hero")
+      assert has_element?(view, "#home-backdrop.aurora")
       assert has_element?(view, "#games-empty")
     end
 

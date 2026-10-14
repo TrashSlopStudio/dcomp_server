@@ -103,3 +103,79 @@
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* This file is for your main application CSS */
+
+/* Home page backdrop: soft colour fields drifting slowly over a faint grid. Only transforms are
+   animated (cheap), colours come from the theme so light and dark both work. */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.aurora::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--color-base-content) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--color-base-content) 7%, transparent) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse at 50% 25%, black, transparent 70%);
+}
+
+.aurora-blob {
+  position: absolute;
+  width: 58vmax;
+  height: 58vmax;
+  border-radius: 9999px;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--aurora-color) 34%, transparent),
+    transparent
+  );
+  will-change: transform;
+  animation: aurora-drift var(--aurora-time) ease-in-out infinite alternate;
+}
+
+.aurora-blob:nth-child(1) {
+  --aurora-color: var(--color-primary);
+  --aurora-time: 36s;
+  top: -22vmax;
+  left: -16vmax;
+}
+
+.aurora-blob:nth-child(2) {
+  --aurora-color: var(--color-info);
+  --aurora-time: 44s;
+  top: 4vh;
+  right: -24vmax;
+  animation-delay: -14s;
+}
+
+.aurora-blob:nth-child(3) {
+  --aurora-color: var(--color-success);
+  --aurora-time: 52s;
+  bottom: -30vmax;
+  left: 18vw;
+  animation-delay: -27s;
+}
+
+@keyframes aurora-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(9vmax, 5vmax, 0) scale(1.14);
+  }
+  100% {
+    transform: translate3d(-7vmax, 11vmax, 0) scale(0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob {
+    animation: none;
+  }
+}
