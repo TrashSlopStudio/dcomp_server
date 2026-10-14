@@ -23,7 +23,10 @@ defmodule DcompWeb.GameLive.Show do
 
     if connected?(socket), do: Phoenix.PubSub.subscribe(Dcomp.PubSub, Sync.topic(game.slug))
 
-    {:ok, socket |> assign(page_title: game.name, game: game, layout_override: nil) |> load()}
+    {:ok,
+     socket
+     |> assign(page_title: game.name, game: game, layout_override: nil, feed_live?: false)
+     |> load()}
   end
 
   @impl true
@@ -47,7 +50,8 @@ defmodule DcompWeb.GameLive.Show do
   @impl true
   def handle_info({:synced, _slug}, socket) do
     if Decomp.get_game(socket.assigns.game.id) do
-      socket = load(socket)
+      # From the first sync on, rows that appear in the feed slide in; the initial ones don't.
+      socket = socket |> assign(feed_live?: true) |> load()
 
       if socket.assigns.lite do
         {:noreply, socket}
@@ -301,6 +305,51 @@ defmodule DcompWeb.GameLive.Show do
         <span>{gettext("The last sync failed, so this data may be out of date.")}</span>
       </div>
 
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+        <.stat
+          id="stat-pace"
+          icon="hero-bolt"
+          label={gettext("Pace")}
+          value={gettext("%{n}/day", n: decimal(@m.velocity.solves_per_day))}
+          sub={gettext("%{n} solved in 7 days", n: @m.velocity.solves_7d)}
+        />
+        <.stat
+          id="stat-eta"
+          icon="hero-calendar-days"
+          label={gettext("Est. finish")}
+          value={eta(@m.velocity.eta_days)}
+          sub={gettext("at the 30-day pace")}
+        />
+        <.stat
+          id="stat-median"
+          icon="hero-clock"
+          label={gettext("Claim to solve")}
+          value={duration(@m.median_claim_to_solve_s)}
+          sub={gettext("median")}
+        />
+        <.stat
+          id="stat-conversion"
+          icon="hero-arrow-trending-up"
+          label={gettext("Claims solved")}
+          value={if @m.conversion_rate, do: percent(@m.conversion_rate * 100), else: "–"}
+          sub={gettext("of all claims")}
+        />
+        <.stat
+          id="stat-expired"
+          icon="hero-clock"
+          label={gettext("Expired")}
+          value={number(@m.expired)}
+          sub={gettext("claims timed out")}
+        />
+        <.stat
+          id="stat-released"
+          icon="hero-arrow-uturn-left"
+          label={gettext("Released")}
+          value={number(@m.released)}
+          sub={gettext("given back")}
+        />
+      </div>
+
       <div class="grid gap-6 lg:grid-cols-3">
         <.panel id="puzzle-panel" title={gettext("The puzzle")} class="lg:col-span-2">
           <:aside :if={!@lite}>
@@ -374,16 +423,32 @@ defmodule DcompWeb.GameLive.Show do
             >
             </div>
           </div>
+          <h3
+            :if={!@lite}
+            id="recent-feed-title"
+            class="mt-4 text-xs font-semibold uppercase tracking-wide text-base-content/60"
+          >
+            {gettext("Recent activity")}
+          </h3>
           <ul
             :if={!@lite}
             id="recent-feed"
             phx-update="stream"
-            aria-label={gettext("Latest activity")}
-            class="mt-3 divide-y divide-base-300 text-xs"
+            aria-labelledby="recent-feed-title"
+            class="mt-1.5 divide-y divide-base-300 text-xs"
           >
             <li
               :for={{id, e} <- @streams.recent}
               id={id}
+              phx-mounted={
+                @feed_live? &&
+                  JS.transition(
+                    {"transition-all duration-700 ease-out motion-reduce:transition-none",
+                     "-translate-y-2 bg-primary/20 opacity-0",
+                     "translate-y-0 bg-transparent opacity-100"},
+                    time: 700
+                  )
+              }
               class="flex items-center gap-2 py-1.5"
             >
               <.icon name={event_icon(e.type)} class="size-3.5 shrink-0 text-base-content/50" />
@@ -418,7 +483,7 @@ defmodule DcompWeb.GameLive.Show do
             class="mt-3 text-xs text-base-content/70"
           >
             <summary class="cursor-pointer select-none hover:text-primary">
-              {gettext("View all functions as a list")}
+              {gettext("View all functions")}
             </summary>
             <div id="puzzle-list-body" phx-update="ignore" class="mt-2 max-h-96 overflow-auto"></div>
           </details>
@@ -484,51 +549,6 @@ defmodule DcompWeb.GameLive.Show do
             />
           </div>
         </div>
-      </div>
-
-      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-        <.stat
-          id="stat-pace"
-          icon="hero-bolt"
-          label={gettext("Pace")}
-          value={gettext("%{n}/day", n: decimal(@m.velocity.solves_per_day))}
-          sub={gettext("%{n} solved in 7 days", n: @m.velocity.solves_7d)}
-        />
-        <.stat
-          id="stat-eta"
-          icon="hero-calendar-days"
-          label={gettext("Est. finish")}
-          value={eta(@m.velocity.eta_days)}
-          sub={gettext("at the 30-day pace")}
-        />
-        <.stat
-          id="stat-median"
-          icon="hero-clock"
-          label={gettext("Claim to solve")}
-          value={duration(@m.median_claim_to_solve_s)}
-          sub={gettext("median")}
-        />
-        <.stat
-          id="stat-conversion"
-          icon="hero-arrow-trending-up"
-          label={gettext("Claims solved")}
-          value={if @m.conversion_rate, do: percent(@m.conversion_rate * 100), else: "–"}
-          sub={gettext("of all claims")}
-        />
-        <.stat
-          id="stat-expired"
-          icon="hero-clock"
-          label={gettext("Expired")}
-          value={number(@m.expired)}
-          sub={gettext("claims timed out")}
-        />
-        <.stat
-          id="stat-released"
-          icon="hero-arrow-uturn-left"
-          label={gettext("Released")}
-          value={number(@m.released)}
-          sub={gettext("given back")}
-        />
       </div>
 
       <.panel id="burn-up-panel" title={gettext("Functions solved over time")}>
