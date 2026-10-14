@@ -568,7 +568,7 @@ msgstr "El enlace no es válido o ya venció."
 #: lib/dcomp_web/live/game_live/show.ex:224
 #, elixir-autogen, elixir-format
 msgid "The puzzle"
-msgstr "El rompecabezas"
+msgstr "The puzzle"
 
 #: lib/dcomp_web/live/game_live/show.ex:1114
 #, elixir-autogen, elixir-format
