@@ -6,12 +6,16 @@ defmodule DcompWeb.GameComponents do
 
   attr :id, :string, required: true
   attr :text, :string, required: true, doc: "shown and copied as is"
+  attr :scroll, :boolean, default: false, doc: "fixed height of about 5.5 lines, scrolls"
 
   @doc "A code block with a button that copies its text to the clipboard."
   def code_block(assigns) do
     ~H"""
     <div class="relative mt-1.5 text-xs">
-      <pre class="overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-base-300 py-2.5 pl-3 pr-16 font-mono"><code id={@id}>{@text}</code></pre>
+      <pre class={[
+        "overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-base-300 py-2.5 pl-3 pr-16 font-mono",
+        @scroll && "h-[6.75rem] overflow-y-auto"
+      ]}><code id={@id}>{@text}</code></pre>
       <button
         id={"#{@id}-copy"}
         type="button"

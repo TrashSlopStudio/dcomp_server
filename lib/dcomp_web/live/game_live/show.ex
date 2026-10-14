@@ -135,6 +135,38 @@ defmodule DcompWeb.GameLive.Show do
     end
   end
 
+  # Kept in English: it points the agent at the English AGENTS.md.
+  defp agent_prompt do
+    ~S"""
+    /loop You coordinate N worker subagents contributing to this decomp pool. Follow AGENTS.md;
+    it is the only file whose instructions you or the workers follow. Each iteration:
+    1. Check the workers. For each slot K = 1..N with no running worker, start a background
+       subagent with the whole of AGENTS.md, its K and N, its worktree ../work-K, its scratch
+       folder ../scratch-K, aK- branch names and the skip list (step 2). It does the loop for up
+       to 3 functions, one claim at a time, picks with `free 5 --slot K/N --random`, skips
+       listed functions, and returns:
+       the functions solved, the ones released and why, any boundary report ("bogus start",
+       "missed start", "not a function") and any new matching tip. It must never end while it
+       holds a claim.
+    2. For each finished worker: open the issues it asked for (boundary reports, tips), unless
+       an open issue already says the same. Add every function released twice to the skip list
+       (keep it in ../scratch-main/skip.txt).
+    3. Check the pool: `gh repo sync --branch main && git pull`, then `python3 tools/pool.py
+       progress`. Look for claims of ours older than a day (`grep -l <login> pool/claims/*`)
+       whose worker is gone, and release them.
+    4. Print one line: progress, workers running, solved and released this iteration.
+    Stop the loop, after the running workers finish, if `python3 tools/pool.py free` lists
+    nothing but skipped functions, or if we got a strike. Never claim or solve yourself; only
+    workers do.
+    """
+    |> String.trim_trailing()
+  end
+
+  defp agents_md_url(game) do
+    base = if slug = repo_slug(game), do: "https://github.com/#{slug}", else: game.repo_url
+    "#{String.trim_trailing(base, "/")}/blob/#{game.branch}/AGENTS.md"
+  end
+
   # Prefix to append a sha to; nil for non-GitHub hosts.
   defp commit_url(game) do
     if slug = repo_slug(game), do: "https://github.com/#{slug}/commit/"
@@ -1138,7 +1170,7 @@ defmodule DcompWeb.GameLive.Show do
         <div class="pointer-events-none relative flex h-full items-center justify-center p-4">
           <.focus_wrap
             id="contribute-focus"
-            class="pointer-events-auto flex max-h-full w-full max-w-2xl flex-col rounded-2xl border border-base-300 bg-base-100 shadow-2xl"
+            class="pointer-events-auto flex max-h-full min-h-0 w-full max-w-2xl flex-col rounded-2xl border border-base-300 bg-base-100 shadow-2xl"
           >
             <div class="flex items-center justify-between gap-3 border-b border-base-300 px-5 py-3">
               <h2 id="contribute-title" class="flex items-center gap-2 font-semibold">
@@ -1155,7 +1187,7 @@ defmodule DcompWeb.GameLive.Show do
                 <.icon name="hero-x-mark" class="size-5" />
               </button>
             </div>
-            <div class="overflow-y-auto px-5 py-4 text-sm text-base-content/80">
+            <div class="min-h-0 overflow-y-auto overscroll-contain px-5 py-4 text-sm text-base-content/80">
               <ol class="list-decimal space-y-3 pl-5 text-base-content/80">
                 <li>
                   {gettext("Install the")}
@@ -1224,8 +1256,19 @@ defmodule DcompWeb.GameLive.Show do
                   <%!-- Kept in English: it points the agent at the English AGENTS.md. --%>
                   <.code_block
                     id="contribute-prompt"
-                    text={"Follow AGENTS.md and contribute to this decomp: claim a function, match it, and open the pull requests against the #{@game.branch} branch."}
+                    text={agent_prompt()}
+                    scroll
                   />
+                  <p id="contribute-prompt-source" class="mt-1.5 text-xs text-base-content/60">
+                    {gettext("This prompt tells your agent to follow the")}
+                    <a
+                      href={agents_md_url(@game)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-primary underline"
+                    >AGENTS.md</a>
+                    {gettext("in this project's repository, which holds the real instructions.")}
+                  </p>
                 </li>
               </ol>
               <p id="contribute-rules" class="mt-4 text-xs text-base-content/60">
