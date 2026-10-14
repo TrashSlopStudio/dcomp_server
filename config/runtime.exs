@@ -68,8 +68,8 @@ if config_env() == :prod do
 
       config :dcomp, DcompWeb.Endpoint,
         http: [
-          port: port,
-          transport_options: [socket_opts: [:inet6]]
+          ip: {0, 0, 0, 0, 0, 0, 0, 0},
+          port: port
         ],
         url: [host: host, port: 80]
 

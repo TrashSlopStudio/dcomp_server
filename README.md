@@ -9,7 +9,7 @@ Elixir / Phoenix LiveView app (OTP app `:dcomp`). Run `make help` for all target
 
 ## Docker
 `make docker.build` / `make docker.release` build and run the release image
-(`devops/builder/Dockerfile`) against the `dcomp_devops_storage` network using `.env.prod`.
+(`devops/builder/Dockerfile`) against the `dcomp_server_storage` network using `.env.prod`.
 
 ## Local stack & ops (formerly dcomp_devops)
 

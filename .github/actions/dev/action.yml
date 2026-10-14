@@ -103,6 +103,8 @@ runs:
       shell: bash
       run: |
         mix setup.web
+      env:
+        MIX_ENV: ${{ inputs.MIX_ENV }}
 
     # Run formatter ------------------------------------------------------------
     - name: Run formatter

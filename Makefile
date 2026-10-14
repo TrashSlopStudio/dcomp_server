@@ -53,7 +53,7 @@ docker.logs:
 #🐳 docker.run: @ Run the dcomp_app docker instance
 docker.run: PORT:=5000
 docker.run:
-	@docker run --detach --name dcomp_app --network dcomp_storage -p ${PORT}:5000 --env-file .env.prod dcomp_app
+	@docker run --detach --name dcomp_app --network dcomp_server_storage -p ${PORT}:5000 --env-file .env.prod dcomp_app
 
 #🐳 docker.connect: @ Connect to the dcomp_app running container
 docker.connect:

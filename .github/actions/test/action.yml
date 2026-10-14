@@ -103,6 +103,8 @@ runs:
       shell: bash
       run: |
         mix setup.web
+      env:
+        MIX_ENV: ${{ inputs.MIX_ENV }}
 
     # Run tests ----------------------------------------------------------------
     - name: Run tests with coverage
