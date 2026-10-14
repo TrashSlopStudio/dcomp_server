@@ -13,14 +13,20 @@ defmodule Dcomp.Decomp.Setting do
   end
 
   @min_poll_interval_s 30
+  # Process.send_after overflows past ~49 days in ms; a day is plenty for a poll.
+  @max_poll_interval_s 86_400
 
   def min_poll_interval_s, do: @min_poll_interval_s
+  def max_poll_interval_s, do: @max_poll_interval_s
 
   def changeset(setting, attrs) do
     setting
     |> cast(attrs, [:poll_interval_s, :layout_mode])
     |> validate_required([:poll_interval_s, :layout_mode])
-    |> validate_number(:poll_interval_s, greater_than_or_equal_to: @min_poll_interval_s)
+    |> validate_number(:poll_interval_s,
+      greater_than_or_equal_to: @min_poll_interval_s,
+      less_than_or_equal_to: @max_poll_interval_s
+    )
   end
 
   def api_key_changeset(setting, hash), do: change(setting, api_key_hash: hash)

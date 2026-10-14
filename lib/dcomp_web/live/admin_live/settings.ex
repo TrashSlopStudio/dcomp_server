@@ -70,6 +70,7 @@ defmodule DcompWeb.AdminLive.Settings do
               type="number"
               label="Poll interval (seconds)"
               min={Dcomp.Decomp.Setting.min_poll_interval_s()}
+              max={Dcomp.Decomp.Setting.max_poll_interval_s()}
             />
             <p class="text-xs text-base-content/60">
               How often every game's repo is fetched, even if no webhook arrives.

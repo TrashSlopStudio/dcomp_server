@@ -17,6 +17,8 @@ defmodule Dcomp.DecompTest do
       assert {s.poll_interval_s, s.layout_mode} == {60, :grid}
       assert {:error, cs} = Decomp.update_settings(s, %{poll_interval_s: 5})
       assert %{poll_interval_s: [_]} = errors_on(cs)
+      assert {:error, cs} = Decomp.update_settings(s, %{poll_interval_s: 9_999_999})
+      assert %{poll_interval_s: [_]} = errors_on(cs)
       assert {:error, _} = Decomp.update_settings(s, %{layout_mode: "bogus"})
     end
   end
