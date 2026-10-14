@@ -20,7 +20,7 @@ defmodule Dcomp.Decomp.Metrics do
   ]
   @velocity_days 30
   @top_remaining 10
-  @activity 20
+  @activity 10
 
   def for_game(%Game{} = game, now \\ DateTime.utc_now()) do
     totals = totals(game)
@@ -199,6 +199,7 @@ defmodule Dcomp.Decomp.Metrics do
 
     %{
       solves_per_day: length(recent) / @velocity_days,
+      solves_24h: Enum.count(recent, fn {_, at, _} -> DateTime.diff(now, at) <= 86_400 end),
       solves_7d: Enum.count(recent, fn {_, at, _} -> DateTime.diff(now, at) <= 7 * 86_400 end),
       bytes_per_day: per_day_bytes,
       eta_days: if(per_day_bytes > 0, do: totals.remaining.bytes / per_day_bytes)

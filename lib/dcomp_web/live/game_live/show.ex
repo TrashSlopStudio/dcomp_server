@@ -13,6 +13,9 @@ defmodule DcompWeb.GameLive.Show do
   alias Dcomp.Decomp
   alias Dcomp.Decomp.{Metrics, Sync}
 
+  # How often "5 min ago" is recomputed.
+  @tick_ms 60_000
+
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     # A malformed id is a missing game (404), not a cast error (400).
@@ -21,11 +24,21 @@ defmodule DcompWeb.GameLive.Show do
         if match?({:ok, _}, Ecto.UUID.cast(id)), do: id, else: Ecto.UUID.generate()
       )
 
-    if connected?(socket), do: Phoenix.PubSub.subscribe(Dcomp.PubSub, Sync.topic(game.slug))
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Dcomp.PubSub, Sync.topic(game.slug))
+      # Lite is plain and has no live feed to refresh.
+      if !socket.assigns.lite, do: :timer.send_interval(@tick_ms, :tick)
+    end
 
     {:ok,
      socket
-     |> assign(page_title: game.name, game: game, layout_override: nil, feed_live?: false)
+     |> assign(
+       page_title: game.name,
+       game: game,
+       layout_override: nil,
+       feed_live?: false,
+       rank_by: :count
+     )
      |> load()}
   end
 
@@ -33,6 +46,16 @@ defmodule DcompWeb.GameLive.Show do
   def handle_params(_params, _uri, socket), do: {:noreply, socket}
 
   @impl true
+  # Works in lite mode too, since the ranking is there.
+  def handle_event("set-rank", %{"by" => by}, socket) when by in ~w(count size) do
+    by = String.to_existing_atom(by)
+
+    {:noreply,
+     socket
+     |> assign(rank_by: by)
+     |> stream(:leaderboard, ranked(socket.assigns.m, by), reset: true)}
+  end
+
   # Lite mode has no puzzle or chart, so these events are ignored there.
   def handle_event(_event, _params, %{assigns: %{lite: true}} = socket), do: {:noreply, socket}
 
@@ -48,6 +71,14 @@ defmodule DcompWeb.GameLive.Show do
   def handle_event("burnup-ready", _params, socket), do: {:reply, burn_up_payload(socket), socket}
 
   @impl true
+  def handle_info(:tick, socket) do
+    # Only the time labels change. Animation is off for this render, so rows can't replay it.
+    {:noreply,
+     socket
+     |> assign(now: DateTime.utc_now(), feed_live?: false)
+     |> stream(:recent, socket.assigns.m.recent_activity, reset: true)}
+  end
+
   def handle_info({:synced, _slug}, socket) do
     if Decomp.get_game(socket.assigns.game.id) do
       # From the first sync on, rows that appear in the feed slide in; the initial ones don't.
@@ -67,9 +98,6 @@ defmodule DcompWeb.GameLive.Show do
     end
   end
 
-  # Events in the live feed under the puzzle.
-  @recent 8
-
   # Loads everything the page shows. Small lists are streams reset on each refresh.
   defp load(socket) do
     game = Decomp.get_game!(socket.assigns.game.id)
@@ -83,13 +111,16 @@ defmodule DcompWeb.GameLive.Show do
       now: DateTime.utc_now(),
       ascii: if(socket.assigns.lite, do: ascii_puzzle(game))
     )
-    |> stream(:leaderboard, m.leaderboard, reset: true)
+    |> stream(:leaderboard, ranked(m, socket.assigns.rank_by), reset: true)
     |> stream(:claims, m.active_claims, reset: true)
     |> stream(:remaining, m.top_remaining, reset: true)
     |> stream(:strikes, m.strikes, reset: true)
-    |> stream(:activity, m.recent_activity, reset: true)
-    |> stream(:recent, Enum.take(m.recent_activity, @recent), reset: true)
+    |> stream(:recent, m.recent_activity, reset: true)
   end
+
+  # The metrics list is ordered by function count; by size re-sorts it by bytes.
+  defp ranked(%{leaderboard: rows}, :count), do: rows
+  defp ranked(%{leaderboard: rows}, :size), do: Enum.sort_by(rows, &{-&1.bytes, -&1.solves})
 
   # Lite mode's puzzle: one character per function (or per bucket of them past ~1000), 50 per
   # line. `.` nothing done, `#` all solved, `+` anything in between.
@@ -423,59 +454,6 @@ defmodule DcompWeb.GameLive.Show do
             >
             </div>
           </div>
-          <h3
-            :if={!@lite}
-            id="recent-feed-title"
-            class="mt-4 text-xs font-semibold uppercase tracking-wide text-base-content/60"
-          >
-            {gettext("Recent activity")}
-          </h3>
-          <ul
-            :if={!@lite}
-            id="recent-feed"
-            phx-update="stream"
-            aria-labelledby="recent-feed-title"
-            class="mt-1.5 divide-y divide-base-300 text-xs"
-          >
-            <li
-              :for={{id, e} <- @streams.recent}
-              id={id}
-              phx-mounted={
-                @feed_live? &&
-                  JS.transition(
-                    {"transition-all duration-700 ease-out motion-reduce:transition-none",
-                     "-translate-y-2 bg-primary/20 opacity-0",
-                     "translate-y-0 bg-transparent opacity-100"},
-                    time: 700
-                  )
-              }
-              class="flex items-center gap-2 py-1.5"
-            >
-              <.icon name={event_icon(e.type)} class="size-3.5 shrink-0 text-base-content/50" />
-              <.person login={e.login} url={e.avatar_url} size="size-4" />
-              <span class="text-base-content/70">
-                {event_label(e.type)} <span class="font-mono">{e.addr}</span>
-                <span :if={e.size} class="text-base-content/50">· {bytes(e.size)}</span>
-              </span>
-              <a
-                :if={(e.type == :solve and e.sha) && commit_url(@game)}
-                href={commit_url(@game) <> e.sha}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={gettext("View the commit")}
-                class="font-mono text-primary hover:underline"
-              >
-                {String.slice(e.sha, 0, 7)}
-              </a>
-              <time
-                datetime={DateTime.to_iso8601(e.at)}
-                title={Calendar.strftime(e.at, "%Y-%m-%d %H:%M UTC")}
-                class="ml-auto whitespace-nowrap text-base-content/50"
-              >
-                {time_ago(e.at, @now)}
-              </time>
-            </li>
-          </ul>
           <details
             :if={!@lite}
             id="puzzle-list"
@@ -548,6 +526,69 @@ defmodule DcompWeb.GameLive.Show do
               sub={gettext("of %{n} total", n: number(@m.totals.all.count))}
             />
           </div>
+          <.panel id="recent-panel" title={gettext("Recent activity")} class="flex-1">
+            <p
+              :if={@m.velocity.solves_24h > 0}
+              id="progress-line"
+              class="mb-2 text-sm tabular-nums text-base-content/70"
+            >
+              {gettext("%{n} solved in the last 24 h", n: @m.velocity.solves_24h)}
+            </p>
+            <ul
+              id="recent-feed"
+              phx-update="stream"
+              aria-label={gettext("Recent activity")}
+              class="divide-y divide-base-300 text-xs"
+            >
+              <li
+                id="recent-feed-empty"
+                class="hidden py-3 text-base-content/60 only:block"
+              >
+                {gettext("Nothing has happened yet.")}
+              </li>
+              <li
+                :for={{id, e} <- @streams.recent}
+                id={id}
+                phx-mounted={
+                  (@feed_live? and !@lite) &&
+                    JS.transition(
+                      {"transition-all duration-700 ease-out motion-reduce:transition-none",
+                       "-translate-y-2 bg-primary/20 opacity-0",
+                       "translate-y-0 bg-transparent opacity-100"},
+                      time: 700
+                    )
+                }
+                class="flex items-center gap-2 py-1.5"
+              >
+                <span title={event_label(e.type)} class="shrink-0">
+                  <.icon name={event_icon(e.type)} class="size-3.5 text-base-content/50" />
+                  <span class="sr-only">{event_label(e.type)}</span>
+                </span>
+                <.person login={e.login} url={e.avatar_url} size="size-4" />
+                <span class="text-base-content/70">
+                  <span class="font-mono">{e.addr}</span>
+                  <span :if={e.size} class="text-base-content/50">· {bytes(e.size)}</span>
+                </span>
+                <a
+                  :if={(e.type == :solve and e.sha) && commit_url(@game)}
+                  href={commit_url(@game) <> e.sha}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={gettext("View the commit")}
+                  class="font-mono text-primary hover:underline"
+                >
+                  {String.slice(e.sha, 0, 7)}
+                </a>
+                <time
+                  datetime={DateTime.to_iso8601(e.at)}
+                  title={Calendar.strftime(e.at, "%Y-%m-%d %H:%M UTC")}
+                  class="ml-auto whitespace-nowrap text-base-content/50"
+                >
+                  {time_ago(e.at, @now)}
+                </time>
+              </li>
+            </ul>
+          </.panel>
         </div>
       </div>
 
@@ -591,6 +632,32 @@ defmodule DcompWeb.GameLive.Show do
 
       <div class="grid gap-6 lg:grid-cols-2">
         <.panel id="leaderboard-panel" title={gettext("Ranking")}>
+          <:aside>
+            <div
+              id="rank-toggle"
+              role="group"
+              aria-label={gettext("Rank by")}
+              class="inline-flex rounded-lg border border-base-300 bg-base-100 p-0.5 text-xs"
+            >
+              <button
+                :for={{by, label} <- [count: gettext("By functions"), size: gettext("By size")]}
+                id={"rank-#{by}"}
+                type="button"
+                phx-click="set-rank"
+                phx-value-by={by}
+                aria-pressed={to_string(@rank_by == by)}
+                class={[
+                  "rounded-md px-2.5 py-1 font-medium transition",
+                  if(@rank_by == by,
+                    do: "bg-primary text-primary-content shadow",
+                    else: "text-base-content/60 hover:text-base-content"
+                  )
+                ]}
+              >
+                {label}
+              </button>
+            </div>
+          </:aside>
           <ol
             id="leaderboard"
             phx-update="stream"
@@ -609,8 +676,12 @@ defmodule DcompWeb.GameLive.Show do
             >
               <.person login={row.login} url={row.avatar_url} size="size-7" />
               <span class="ml-auto text-right tabular-nums">
-                <span class="font-semibold">{number(row.solves)}</span>
-                <span class="text-base-content/50"> · {bytes(row.bytes)}</span>
+                <span class={[@rank_by == :count && "font-semibold"]}>{number(row.solves)}</span>
+                <span class={[
+                  if(@rank_by == :size, do: "font-semibold", else: "text-base-content/50")
+                ]}>
+                  · {bytes(row.bytes)}
+                </span>
               </span>
             </li>
           </ol>
@@ -686,42 +757,6 @@ defmodule DcompWeb.GameLive.Show do
                 ></span>
               </span>
               <span class="text-right tabular-nums">{number(b.count)}</span>
-            </li>
-          </ul>
-        </.panel>
-
-        <.panel id="activity-panel" title={gettext("Recent activity")}>
-          <ul id="activity" phx-update="stream" class="divide-y divide-base-300">
-            <li
-              id="activity-empty"
-              class="hidden py-6 text-center text-sm text-base-content/60 only:block"
-            >
-              {gettext("Nothing has happened yet.")}
-            </li>
-            <li
-              :for={{id, e} <- @streams.activity}
-              id={id}
-              class="flex items-center gap-3 py-2.5 text-sm"
-            >
-              <.icon name={event_icon(e.type)} class="size-4 shrink-0 text-base-content/50" />
-              <.person login={e.login} url={e.avatar_url} size="size-5" />
-              <span class="text-base-content/70">
-                {event_label(e.type)} <span class="font-mono text-xs">{e.addr}</span>
-              </span>
-              <a
-                :if={(e.type == :solve and e.sha) && repo_slug(@game)}
-                href={commit_url(@game) <> e.sha}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={gettext("View the commit")}
-                class="font-mono text-xs text-primary hover:underline"
-              >
-                {String.slice(e.sha, 0, 7)}
-              </a>
-              <span class="ml-auto whitespace-nowrap text-xs text-base-content/50">{time_ago(
-                e.at,
-                @now
-              )}</span>
             </li>
           </ul>
         </.panel>

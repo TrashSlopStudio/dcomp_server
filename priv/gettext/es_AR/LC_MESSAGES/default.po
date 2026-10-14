@@ -11,19 +11,19 @@ msgstr ""
 "Language: es_AR\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/dcomp_web/live/game_live/show.ex:214
+#: lib/dcomp_web/live/game_live/show.ex:245
 #, elixir-autogen, elixir-format
 msgid "%{game} functions"
 msgstr "Funciones de %{game}"
 
-#: lib/dcomp_web/live/game_live/show.ex:388
-#: lib/dcomp_web/live/game_live/show.ex:412
+#: lib/dcomp_web/live/game_live/show.ex:419
+#: lib/dcomp_web/live/game_live/show.ex:443
 #, elixir-autogen, elixir-format
 msgid "%{game} puzzle: %{solved} of %{total} functions solved, %{claimed} claimed"
 msgstr "Rompecabezas de %{game}: %{solved} de %{total} funciones resueltas, %{claimed} reclamadas"
 
-#: lib/dcomp_web/live/game_live/show.ex:218
-#: lib/dcomp_web/live/game_live/show.ex:228
+#: lib/dcomp_web/live/game_live/show.ex:249
+#: lib/dcomp_web/live/game_live/show.ex:259
 #, elixir-autogen, elixir-format
 msgid "%{n} bytes"
 msgstr "%{n} bytes"
@@ -47,7 +47,7 @@ msgstr[1] "hace %{n} días"
 msgid "%{n} days"
 msgstr "%{n} días"
 
-#: lib/dcomp_web/live/game_live/show.ex:227
+#: lib/dcomp_web/live/game_live/show.ex:258
 #, elixir-autogen, elixir-format
 msgid "%{n} functions solved"
 msgstr "%{n} funciones resueltas"
@@ -77,25 +77,25 @@ msgstr "faltan %{n} min"
 msgid "%{n} months"
 msgstr "%{n} meses"
 
-#: lib/dcomp_web/live/game_live/show.ex:314
+#: lib/dcomp_web/live/game_live/show.ex:345
 #, elixir-autogen, elixir-format
 msgid "%{n} solved in 7 days"
 msgstr "%{n} resueltas en 7 días"
 
-#: lib/dcomp_web/live/game_live/show.ex:240
+#: lib/dcomp_web/live/game_live/show.ex:271
 #, elixir-autogen, elixir-format
 msgid "%{n} strike and you can't claim"
 msgid_plural "%{n} strikes and you can't claim"
 msgstr[0] "%{n} penalización y no podés reclamar"
 msgstr[1] "%{n} penalizaciones y no podés reclamar"
 
-#: lib/dcomp_web/live/game_live/show.ex:313
+#: lib/dcomp_web/live/game_live/show.ex:344
 #, elixir-autogen, elixir-format
 msgid "%{n}/day"
 msgstr "%{n}/día"
 
 #: lib/dcomp_web/live/game_live/index.ex:60
-#: lib/dcomp_web/live/game_live/show.ex:1275
+#: lib/dcomp_web/live/game_live/show.ex:1310
 #, elixir-autogen, elixir-format
 msgid ", Codex or Cursor."
 msgstr ", Codex o Cursor."
@@ -120,7 +120,7 @@ msgstr "Configuración de la cuenta"
 msgid "Actions"
 msgstr "Acciones"
 
-#: lib/dcomp_web/live/game_live/show.ex:619
+#: lib/dcomp_web/live/game_live/show.ex:690
 #, elixir-autogen, elixir-format
 msgid "Active claims"
 msgstr "Reclamos activos"
@@ -130,7 +130,7 @@ msgstr "Reclamos activos"
 msgid "Add the first one"
 msgstr "Agregá el primero"
 
-#: lib/dcomp_web/live/game_live/show.ex:215
+#: lib/dcomp_web/live/game_live/show.ex:246
 #, elixir-autogen, elixir-format
 msgid "Address"
 msgstr "Dirección"
@@ -140,7 +140,7 @@ msgstr "Dirección"
 msgid "Admin"
 msgstr "Admin"
 
-#: lib/dcomp_web/live/game_live/show.ex:269
+#: lib/dcomp_web/live/game_live/show.ex:300
 #, elixir-autogen, elixir-format
 msgid "All games"
 msgstr "Todos los juegos"
@@ -151,17 +151,17 @@ msgstr "Todos los juegos"
 msgid "Attempting to reconnect"
 msgstr "Intentando reconectar"
 
-#: lib/dcomp_web/live/game_live/show.ex:647
+#: lib/dcomp_web/live/game_live/show.ex:718
 #, elixir-autogen, elixir-format
 msgid "Biggest functions left"
 msgstr "Funciones más grandes que faltan"
 
-#: lib/dcomp_web/live/game_live/show.ex:364
+#: lib/dcomp_web/live/game_live/show.ex:395
 #, elixir-autogen, elixir-format
 msgid "By function size"
 msgstr "Por tamaño de función"
 
-#: lib/dcomp_web/live/game_live/show.ex:578
+#: lib/dcomp_web/live/game_live/show.ex:619
 #, elixir-autogen, elixir-format
 msgid "Bytes"
 msgstr "Bytes"
@@ -177,29 +177,29 @@ msgstr "Cambiar email"
 msgid "Changing..."
 msgstr "Cambiando..."
 
-#: lib/dcomp_web/live/game_live/show.ex:326
+#: lib/dcomp_web/live/game_live/show.ex:357
 #, elixir-autogen, elixir-format
 msgid "Claim to solve"
 msgstr "Del reclamo a la solución"
 
 #: lib/dcomp_web/live/game_live/index.ex:117
-#: lib/dcomp_web/live/game_live/show.ex:499
-#: lib/dcomp_web/live/game_live/show.ex:532
+#: lib/dcomp_web/live/game_live/show.ex:477
+#: lib/dcomp_web/live/game_live/show.ex:510
 #, elixir-autogen, elixir-format
 msgid "Claimed"
 msgstr "Reclamadas"
 
-#: lib/dcomp_web/live/game_live/show.ex:333
+#: lib/dcomp_web/live/game_live/show.ex:364
 #, elixir-autogen, elixir-format
 msgid "Claims solved"
 msgstr "Reclamos resueltos"
 
-#: lib/dcomp_web/live/game_live/show.ex:1295
+#: lib/dcomp_web/live/game_live/show.ex:1330
 #, elixir-autogen, elixir-format
 msgid "Claude Code, for example:"
 msgstr "Claude Code, por ejemplo:"
 
-#: lib/dcomp_web/live/game_live/show.ex:1253
+#: lib/dcomp_web/live/game_live/show.ex:1288
 #, elixir-autogen, elixir-format
 msgid "Close"
 msgstr "Cerrar"
@@ -209,7 +209,7 @@ msgstr "Cerrar"
 msgid "Community decompilation"
 msgstr "Decompilación comunitaria"
 
-#: lib/dcomp_web/live/game_live/show.ex:513
+#: lib/dcomp_web/live/game_live/show.ex:491
 #, elixir-autogen, elixir-format
 msgid "Complete"
 msgstr "Completado"
@@ -219,12 +219,12 @@ msgstr "Completado"
 msgid "Confirm new password"
 msgstr "Confirmá la nueva contraseña"
 
-#: lib/dcomp_web/live/game_live/show.ex:279
+#: lib/dcomp_web/live/game_live/show.ex:310
 #, elixir-autogen, elixir-format
 msgid "Contribute"
 msgstr "Contribuir"
 
-#: lib/dcomp_web/live/game_live/show.ex:215
+#: lib/dcomp_web/live/game_live/show.ex:246
 #, elixir-autogen, elixir-format
 msgid "Contributor"
 msgstr "Colaborador"
@@ -244,7 +244,7 @@ msgstr "Copiar"
 msgid "Copy to clipboard"
 msgstr "Copiar al portapapeles"
 
-#: lib/dcomp_web/live/game_live/show.ex:576
+#: lib/dcomp_web/live/game_live/show.ex:617
 #, elixir-autogen, elixir-format
 msgid "Date"
 msgstr "Fecha"
@@ -271,38 +271,38 @@ msgstr "El enlace para cambiar el email no es válido o ya venció."
 msgid "Email changed successfully."
 msgstr "El email se cambió correctamente."
 
-#: lib/dcomp_web/live/game_live/show.ex:364
+#: lib/dcomp_web/live/game_live/show.ex:395
 #, elixir-autogen, elixir-format
 msgid "Equal pieces"
 msgstr "Piezas iguales"
 
-#: lib/dcomp_web/live/game_live/show.ex:319
+#: lib/dcomp_web/live/game_live/show.ex:350
 #, elixir-autogen, elixir-format
 msgid "Est. finish"
 msgstr "Fin estimado"
 
-#: lib/dcomp_web/live/game_live/show.ex:653
+#: lib/dcomp_web/live/game_live/show.ex:724
 #, elixir-autogen, elixir-format
 msgid "Everything is solved."
 msgstr "Todo está resuelto."
 
-#: lib/dcomp_web/live/game_live/show.ex:340
+#: lib/dcomp_web/live/game_live/show.ex:371
 #, elixir-autogen, elixir-format
 msgid "Expired"
 msgstr "Vencidos"
 
-#: lib/dcomp_web/live/game_live/show.ex:1314
+#: lib/dcomp_web/live/game_live/show.ex:1349
 #, elixir-autogen, elixir-format
 msgid "Follow the setup in"
 msgstr "Seguí la configuración de"
 
-#: lib/dcomp_web/live/game_live/show.ex:1304
+#: lib/dcomp_web/live/game_live/show.ex:1339
 #, elixir-autogen, elixir-format
 msgid "Fork and clone"
 msgstr "Hacé un fork y cloná"
 
-#: lib/dcomp_web/live/game_live/show.ex:226
-#: lib/dcomp_web/live/game_live/show.ex:554
+#: lib/dcomp_web/live/game_live/show.ex:257
+#: lib/dcomp_web/live/game_live/show.ex:595
 #, elixir-autogen, elixir-format
 msgid "Functions solved over time"
 msgstr "Funciones resueltas a lo largo del tiempo"
@@ -312,12 +312,12 @@ msgstr "Funciones resueltas a lo largo del tiempo"
 msgid "Games"
 msgstr "Juegos"
 
-#: lib/dcomp_web/live/game_live/show.ex:1282
+#: lib/dcomp_web/live/game_live/show.ex:1317
 #, elixir-autogen, elixir-format
 msgid "GitHub CLI on Debian/Ubuntu"
 msgstr "GitHub CLI en Debian/Ubuntu"
 
-#: lib/dcomp_web/live/game_live/show.ex:1278
+#: lib/dcomp_web/live/game_live/show.ex:1313
 #, elixir-autogen, elixir-format
 msgid "GitHub CLI on macOS:"
 msgstr "GitHub CLI en macOS:"
@@ -327,7 +327,7 @@ msgstr "GitHub CLI en macOS:"
 msgid "How contributing works"
 msgstr "Cómo se contribuye"
 
-#: lib/dcomp_web/live/game_live/show.ex:1247
+#: lib/dcomp_web/live/game_live/show.ex:1282
 #, elixir-autogen, elixir-format
 msgid "How to contribute to %{game}"
 msgstr "Cómo contribuir a %{game}"
@@ -337,7 +337,7 @@ msgstr "Cómo contribuir a %{game}"
 msgid "If your email is in our system, you will receive instructions for logging in shortly."
 msgstr "Si tu email está en nuestro sistema, en breve vas a recibir las instrucciones para iniciar sesión."
 
-#: lib/dcomp_web/live/game_live/show.ex:1262
+#: lib/dcomp_web/live/game_live/show.ex:1297
 #, elixir-autogen, elixir-format
 msgid "Install the"
 msgstr "Instalá el"
@@ -347,7 +347,7 @@ msgstr "Instalá el"
 msgid "Invalid email or password"
 msgstr "Email o contraseña incorrectos"
 
-#: lib/dcomp_web/live/game_live/show.ex:1319
+#: lib/dcomp_web/live/game_live/show.ex:1354
 #, elixir-autogen, elixir-format
 msgid "Its SHA1 must be:"
 msgstr "Su SHA1 tiene que ser:"
@@ -398,7 +398,7 @@ msgstr "Administrá el email y la contraseña de tu cuenta"
 msgid "New password"
 msgstr "Nueva contraseña"
 
-#: lib/dcomp_web/live/game_live/show.ex:735
+#: lib/dcomp_web/live/game_live/show.ex:770
 #, elixir-autogen, elixir-format
 msgid "No expired claims."
 msgstr "No hay reclamos vencidos."
@@ -408,22 +408,22 @@ msgstr "No hay reclamos vencidos."
 msgid "No games yet."
 msgstr "Todavía no hay juegos."
 
-#: lib/dcomp_web/live/game_live/show.ex:625
+#: lib/dcomp_web/live/game_live/show.ex:696
 #, elixir-autogen, elixir-format
 msgid "No open claims."
 msgstr "No hay reclamos abiertos."
 
-#: lib/dcomp_web/live/game_live/show.ex:225
+#: lib/dcomp_web/live/game_live/show.ex:256
 #, elixir-autogen, elixir-format
 msgid "No solves yet."
 msgstr "Todavía no hay funciones resueltas."
 
-#: lib/dcomp_web/live/game_live/show.ex:603
+#: lib/dcomp_web/live/game_live/show.ex:670
 #, elixir-autogen, elixir-format
 msgid "Nobody has solved a function yet."
 msgstr "Todavía nadie resolvió una función."
 
-#: lib/dcomp_web/live/game_live/show.ex:699
+#: lib/dcomp_web/live/game_live/show.ex:547
 #, elixir-autogen, elixir-format
 msgid "Nothing has happened yet."
 msgstr "Todavía no pasó nada."
@@ -433,7 +433,7 @@ msgstr "Todavía no pasó nada."
 msgid "Open a project below for its repository, setup and rules."
 msgstr "Abrí un proyecto de abajo para ver su repositorio, la configuración y las reglas."
 
-#: lib/dcomp_web/live/game_live/show.ex:312
+#: lib/dcomp_web/live/game_live/show.ex:343
 #, elixir-autogen, elixir-format
 msgid "Pace"
 msgstr "Ritmo"
@@ -458,44 +458,44 @@ msgstr "Elegí un proyecto, reclamá una función y resolvela. Cada función res
 msgid "Piece by piece, byte for byte"
 msgstr "Pieza por pieza, byte por byte"
 
-#: lib/dcomp_web/live/game_live/show.ex:359
+#: lib/dcomp_web/live/game_live/show.ex:390
 #, elixir-autogen, elixir-format
 msgid "Piece layout"
 msgstr "Disposición de las piezas"
 
-#: lib/dcomp_web/live/game_live/show.ex:593
+#: lib/dcomp_web/live/game_live/show.ex:634
 #, elixir-autogen, elixir-format
 msgid "Ranking"
 msgstr "Ranking"
 
-#: lib/dcomp_web/live/game_live/show.ex:431
-#: lib/dcomp_web/live/game_live/show.ex:693
+#: lib/dcomp_web/live/game_live/show.ex:529
+#: lib/dcomp_web/live/game_live/show.ex:540
 #, elixir-autogen, elixir-format
 msgid "Recent activity"
 msgstr "Actividad reciente"
 
-#: lib/dcomp_web/live/game_live/show.ex:250
+#: lib/dcomp_web/live/game_live/show.ex:281
 #, elixir-autogen, elixir-format
 msgid "Release what you won't finish: expired claims earn strikes."
 msgstr "Liberá lo que no vayas a terminar: los reclamos vencidos suman penalizaciones."
 
-#: lib/dcomp_web/live/game_live/show.ex:347
+#: lib/dcomp_web/live/game_live/show.ex:378
 #, elixir-autogen, elixir-format
 msgid "Released"
 msgstr "Liberados"
 
 #: lib/dcomp_web/live/game_live/index.ex:121
-#: lib/dcomp_web/live/game_live/show.ex:546
+#: lib/dcomp_web/live/game_live/show.ex:524
 #, elixir-autogen, elixir-format
 msgid "Remaining"
 msgstr "Restantes"
 
-#: lib/dcomp_web/live/game_live/show.ex:288
+#: lib/dcomp_web/live/game_live/show.ex:319
 #, elixir-autogen, elixir-format
 msgid "Repository"
 msgstr "Repositorio"
 
-#: lib/dcomp_web/live/game_live/show.ex:253
+#: lib/dcomp_web/live/game_live/show.ex:284
 #, elixir-autogen, elixir-format
 msgid "Rules here: %{rules}. Release what you won't finish."
 msgstr "Reglas de este proyecto: %{rules}. Liberá lo que no vayas a terminar."
@@ -505,29 +505,29 @@ msgstr "Reglas de este proyecto: %{rules}. Liberá lo que no vayas a terminar."
 msgid "Save Password"
 msgstr "Guardar contraseña"
 
-#: lib/dcomp_web/live/game_live/show.ex:217
+#: lib/dcomp_web/live/game_live/show.ex:248
 #, elixir-autogen, elixir-format
 msgid "Show more (%{shown} of %{total})"
 msgstr "Mostrar más (%{shown} de %{total})"
 
-#: lib/dcomp_web/live/game_live/show.ex:215
+#: lib/dcomp_web/live/game_live/show.ex:246
 #, elixir-autogen, elixir-format
 msgid "Size"
 msgstr "Tamaño"
 
 #: lib/dcomp_web/live/game_live/index.ex:113
-#: lib/dcomp_web/live/game_live/show.ex:502
-#: lib/dcomp_web/live/game_live/show.ex:525
+#: lib/dcomp_web/live/game_live/show.ex:480
+#: lib/dcomp_web/live/game_live/show.ex:503
 #, elixir-autogen, elixir-format
 msgid "Solved"
 msgstr "Resueltas"
 
-#: lib/dcomp_web/live/game_live/show.ex:577
+#: lib/dcomp_web/live/game_live/show.ex:618
 #, elixir-autogen, elixir-format
 msgid "Solved (total)"
 msgstr "Resueltas (total)"
 
-#: lib/dcomp_web/live/game_live/show.ex:219
+#: lib/dcomp_web/live/game_live/show.ex:250
 #, elixir-autogen, elixir-format
 msgid "Solved by an unknown contributor"
 msgstr "Resuelta por un colaborador desconocido"
@@ -537,27 +537,27 @@ msgstr "Resuelta por un colaborador desconocido"
 msgid "Something went wrong!"
 msgstr "¡Algo salió mal!"
 
-#: lib/dcomp_web/live/game_live/show.ex:1324
+#: lib/dcomp_web/live/game_live/show.ex:1359
 #, elixir-autogen, elixir-format
 msgid "Start your agent in the clone and tell it:"
 msgstr "Iniciá tu agente en el clon y decile:"
 
-#: lib/dcomp_web/live/game_live/show.ex:215
+#: lib/dcomp_web/live/game_live/show.ex:246
 #, elixir-autogen, elixir-format
 msgid "Status"
 msgstr "Estado"
 
-#: lib/dcomp_web/live/game_live/show.ex:729
+#: lib/dcomp_web/live/game_live/show.ex:764
 #, elixir-autogen, elixir-format
 msgid "Strikes"
 msgstr "Penalizaciones"
 
-#: lib/dcomp_web/live/game_live/show.ex:292
+#: lib/dcomp_web/live/game_live/show.ex:323
 #, elixir-autogen, elixir-format
 msgid "Synced %{when}"
 msgstr "Sincronizado %{when}"
 
-#: lib/dcomp_web/live/game_live/show.ex:305
+#: lib/dcomp_web/live/game_live/show.ex:336
 #, elixir-autogen, elixir-format
 msgid "The last sync failed, so this data may be out of date."
 msgstr "La última sincronización falló, así que estos datos pueden estar desactualizados."
@@ -567,18 +567,18 @@ msgstr "La última sincronización falló, así que estos datos pueden estar des
 msgid "The link is invalid or it has expired."
 msgstr "El enlace no es válido o ya venció."
 
-#: lib/dcomp_web/live/game_live/show.ex:354
+#: lib/dcomp_web/live/game_live/show.ex:385
 #, elixir-autogen, elixir-format
 msgid "The puzzle"
 msgstr "The puzzle"
 
-#: lib/dcomp_web/live/game_live/show.ex:1291
+#: lib/dcomp_web/live/game_live/show.ex:1326
 #, elixir-autogen, elixir-format
 msgid "Then log in:"
 msgstr "Después iniciá sesión:"
 
-#: lib/dcomp_web/live/game_live/show.ex:496
-#: lib/dcomp_web/live/game_live/show.ex:539
+#: lib/dcomp_web/live/game_live/show.ex:474
+#: lib/dcomp_web/live/game_live/show.ex:517
 #, elixir-autogen, elixir-format
 msgid "Unclaimed"
 msgstr "Sin reclamar"
@@ -598,7 +598,7 @@ msgstr "Colaborador desconocido"
 msgid "Unknown language."
 msgstr "Idioma desconocido."
 
-#: lib/dcomp_web/live/game_live/show.ex:675
+#: lib/dcomp_web/live/game_live/show.ex:746
 #, elixir-autogen, elixir-format
 msgid "Unsolved by size"
 msgstr "Sin resolver, por tamaño"
@@ -608,7 +608,7 @@ msgstr "Sin resolver, por tamaño"
 msgid "User confirmed successfully."
 msgstr "Usuario confirmado correctamente."
 
-#: lib/dcomp_web/live/game_live/show.ex:571
+#: lib/dcomp_web/live/game_live/show.ex:612
 #, elixir-autogen, elixir-format
 msgid "View as table"
 msgstr "Ver como tabla"
@@ -639,32 +639,32 @@ msgstr "Podés hacerlo a mano o dejar que tu propio agente de programación con 
 msgid "You need to reauthenticate to perform sensitive actions on your account."
 msgstr "Necesitás volver a autenticarte para realizar acciones sensibles en tu cuenta."
 
-#: lib/dcomp_web/live/game_live/show.ex:1269
+#: lib/dcomp_web/live/game_live/show.ex:1304
 #, elixir-autogen, elixir-format
 msgid "and an AI coding agent of your choice, such as"
 msgstr "y un agente de programación con IA a tu elección, como"
 
-#: lib/dcomp_web/live/game_live/show.ex:321
+#: lib/dcomp_web/live/game_live/show.ex:352
 #, elixir-autogen, elixir-format
 msgid "at the 30-day pace"
 msgstr "al ritmo de los últimos 30 días"
 
-#: lib/dcomp_web/live/game_live/show.ex:518
+#: lib/dcomp_web/live/game_live/show.ex:496
 #, elixir-autogen, elixir-format
 msgid "by bytes · %{pct} by function count"
 msgstr "por bytes · %{pct} por cantidad de funciones"
 
-#: lib/dcomp_web/live/game_live/show.ex:748
+#: lib/dcomp_web/live/game_live/show.ex:783
 #, elixir-autogen, elixir-format
 msgid "can't claim"
 msgstr "no puede reclamar"
 
-#: lib/dcomp_web/live/game_live/show.ex:238
+#: lib/dcomp_web/live/game_live/show.ex:269
 #, elixir-autogen, elixir-format
 msgid "claims expire after %{n} h"
 msgstr "los reclamos vencen luego de %{n} h"
 
-#: lib/dcomp_web/live/game_live/show.ex:342
+#: lib/dcomp_web/live/game_live/show.ex:373
 #, elixir-autogen, elixir-format
 msgid "claims timed out"
 msgstr "reclamos que vencieron"
@@ -674,7 +674,7 @@ msgstr "reclamos que vencieron"
 msgid "close"
 msgstr "cerrar"
 
-#: lib/dcomp_web/live/game_live/show.ex:1316
+#: lib/dcomp_web/live/game_live/show.ex:1351
 #, elixir-autogen, elixir-format
 msgid "compiler tools and your own legally obtained ROM as"
 msgstr "las herramientas de compilación y tu propia ROM obtenida legalmente como"
@@ -684,7 +684,7 @@ msgstr "las herramientas de compilación y tu propia ROM obtenida legalmente com
 msgid "expired"
 msgstr "vencido"
 
-#: lib/dcomp_web/live/game_live/show.ex:349
+#: lib/dcomp_web/live/game_live/show.ex:380
 #, elixir-autogen, elixir-format
 msgid "given back"
 msgstr "devueltas"
@@ -694,12 +694,12 @@ msgstr "devueltas"
 msgid "just now"
 msgstr "recién"
 
-#: lib/dcomp_web/live/game_live/show.ex:328
+#: lib/dcomp_web/live/game_live/show.ex:359
 #, elixir-autogen, elixir-format
 msgid "median"
 msgstr "mediana"
 
-#: lib/dcomp_web/live/game_live/show.ex:1287
+#: lib/dcomp_web/live/game_live/show.ex:1322
 #, elixir-autogen, elixir-format
 msgid "more info"
 msgstr "más info"
@@ -709,17 +709,17 @@ msgstr "más info"
 msgid "never"
 msgstr "nunca"
 
-#: lib/dcomp_web/live/game_live/show.ex:548
+#: lib/dcomp_web/live/game_live/show.ex:526
 #, elixir-autogen, elixir-format
 msgid "of %{n} total"
 msgstr "de %{n} en total"
 
-#: lib/dcomp_web/live/game_live/show.ex:335
+#: lib/dcomp_web/live/game_live/show.ex:366
 #, elixir-autogen, elixir-format
 msgid "of all claims"
 msgstr "de todos los reclamos"
 
-#: lib/dcomp_web/live/game_live/show.ex:235
+#: lib/dcomp_web/live/game_live/show.ex:266
 #, elixir-autogen, elixir-format
 msgid "up to %{n} claim at once"
 msgid_plural "up to %{n} claims at once"
@@ -750,19 +750,19 @@ msgctxt "activity"
 msgid "solved"
 msgstr "resolvió"
 
-#: lib/dcomp_web/live/game_live/show.ex:211
+#: lib/dcomp_web/live/game_live/show.ex:242
 #, elixir-autogen, elixir-format
 msgctxt "piece status"
 msgid "Claimed"
 msgstr "Reclamada"
 
-#: lib/dcomp_web/live/game_live/show.ex:212
+#: lib/dcomp_web/live/game_live/show.ex:243
 #, elixir-autogen, elixir-format
 msgctxt "piece status"
 msgid "Solved"
 msgstr "Resuelta"
 
-#: lib/dcomp_web/live/game_live/show.ex:210
+#: lib/dcomp_web/live/game_live/show.ex:241
 #, elixir-autogen, elixir-format
 msgctxt "piece status"
 msgid "Unclaimed"
@@ -802,28 +802,27 @@ msgstr "Lite"
 msgid "Plain, lightweight version of the site"
 msgstr "Versión simple y liviana del sitio"
 
-#: lib/dcomp_web/live/game_live/show.ex:397
+#: lib/dcomp_web/live/game_live/show.ex:428
 #, elixir-autogen, elixir-format
 msgid ". unclaimed   + claimed or partly solved   # solved"
 msgstr ". sin reclamar   + reclamada o resuelta en parte   # resuelta"
 
-#: lib/dcomp_web/live/game_live/show.ex:1332
+#: lib/dcomp_web/live/game_live/show.ex:1367
 #, elixir-autogen, elixir-format
 msgid "This prompt tells your agent to follow the"
 msgstr "Este prompt le indica a tu agente que siga el"
 
-#: lib/dcomp_web/live/game_live/show.ex:465
-#: lib/dcomp_web/live/game_live/show.ex:716
+#: lib/dcomp_web/live/game_live/show.ex:577
 #, elixir-autogen, elixir-format
 msgid "View the commit"
 msgstr "Ver el commit"
 
-#: lib/dcomp_web/live/game_live/show.ex:216
+#: lib/dcomp_web/live/game_live/show.ex:247
 #, elixir-autogen, elixir-format
 msgid "click to open commit"
 msgstr "clic para abrir el commit"
 
-#: lib/dcomp_web/live/game_live/show.ex:1339
+#: lib/dcomp_web/live/game_live/show.ex:1374
 #, elixir-autogen, elixir-format
 msgid "in this project's repository, which holds the real instructions."
 msgstr "del repositorio de este proyecto, que tiene las instrucciones reales."
@@ -853,7 +852,27 @@ msgstr "Algo salió mal"
 msgid "This page doesn't exist, or the game it belonged to is gone."
 msgstr "Esta página no existe, o el juego al que pertenecía ya no está."
 
-#: lib/dcomp_web/live/game_live/show.ex:486
+#: lib/dcomp_web/live/game_live/show.ex:464
 #, elixir-autogen, elixir-format
 msgid "View all functions"
 msgstr "Ver todas las funciones"
+
+#: lib/dcomp_web/live/game_live/show.ex:535
+#, elixir-autogen, elixir-format
+msgid "%{n} solved in the last 24 h"
+msgstr "%{n} resueltas en las últimas 24 h"
+
+#: lib/dcomp_web/live/game_live/show.ex:643
+#, elixir-autogen, elixir-format
+msgid "By functions"
+msgstr "Por funciones"
+
+#: lib/dcomp_web/live/game_live/show.ex:643
+#, elixir-autogen, elixir-format
+msgid "By size"
+msgstr "Por tamaño"
+
+#: lib/dcomp_web/live/game_live/show.ex:639
+#, elixir-autogen, elixir-format
+msgid "Rank by"
+msgstr "Ordenar por"

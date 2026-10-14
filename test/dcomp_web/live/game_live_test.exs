@@ -63,7 +63,7 @@ defmodule DcompWeb.GameLiveTest do
       assert has_element?(view, "#remaining-08000400")
       assert has_element?(view, "#remaining-08000300")
       assert has_element?(view, "#strikes-cy", "1 / 3")
-      assert has_element?(view, "#activity li", "08000200")
+      assert has_element?(view, "#recent-feed li", "08000200")
     end
 
     test "hooks get their data through a ready event", %{view: view} do
@@ -89,9 +89,15 @@ defmodule DcompWeb.GameLiveTest do
       refute has_element?(view, "#contribute-rom-sha1")
     end
 
-    test "shows the latest activity under the puzzle", %{view: view} do
+    test "shows progress and the latest activity under the puzzle", %{view: view} do
+      refute has_element?(view, "#progress-line")
       assert has_element?(view, "#recent-feed li", "08000200")
       assert has_element?(view, "#recent-feed li time[datetime]")
+    end
+
+    test "a tick refreshes the feed's times without losing rows", %{view: view} do
+      send(view.pid, :tick)
+      assert has_element?(view, "#recent-feed li", "08000200")
     end
 
     test "pushes fresh data to the hooks after a sync", %{view: view, game: game} do
@@ -99,6 +105,29 @@ defmodule DcompWeb.GameLiveTest do
       assert_push_event(view, "puzzle:data", %{mode: "size"})
       assert_push_event(view, "burnup:data", %{points: [_ | _]})
     end
+  end
+
+  test "the ranking can be ordered by function count or by size", %{conn: conn} do
+    import Ecto.Query
+    game = synced_game_fixture()
+    ana = Dcomp.Repo.get_by!(Dcomp.Decomp.Contributor, login: "ana")
+    funcs = from(f in Dcomp.Decomp.Function, where: f.game_id == ^game.id)
+
+    # ana: 2 solves, 400 B. The unknown solver: 1 solve, 5000 B.
+    Dcomp.Repo.update_all(from(f in funcs, where: f.addr == "08000200"), set: [size: 5000])
+
+    Dcomp.Repo.update_all(from(f in funcs, where: f.addr == "08000300"),
+      set: [status: :solved, solved_by_id: ana.id]
+    )
+
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.id}")
+    assert has_element?(view, "#rank-count[aria-pressed=true]")
+    assert has_element?(view, "#leaderboard li:nth-child(2)", "ana")
+
+    view |> element("#rank-size") |> render_click()
+    assert has_element?(view, "#rank-size[aria-pressed=true]")
+    refute has_element?(view, "#leaderboard li:nth-child(2)", "ana")
+    assert has_element?(view, "#leaderboard li:nth-child(3)", "ana")
   end
 
   test "shows the expected ROM SHA1 when the game has one", %{conn: conn} do
