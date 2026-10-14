@@ -62,14 +62,20 @@ defmodule Dcomp.Accounts do
   Sets a user's role. The last admin can't be demoted, so the site can't lock itself out.
   """
   def set_role(%User{} = user, role) when role in [:user, :admin] do
-    if role == :user and user.role == :admin and admin_count() <= 1 do
-      {:error, :last_admin}
-    else
-      user |> Ecto.Changeset.change(role: role) |> Repo.update()
-    end
-  end
+    # Locking the admin rows serialises concurrent demotions, so two can't both see "2 admins".
+    {:ok, result} =
+      Repo.transaction(fn ->
+        admins = Repo.all(from u in User, where: u.role == :admin, lock: "FOR UPDATE")
 
-  defp admin_count, do: Repo.aggregate(from(u in User, where: u.role == :admin), :count)
+        if role == :user and user.role == :admin and length(admins) <= 1 do
+          {:error, :last_admin}
+        else
+          user |> Ecto.Changeset.change(role: role) |> Repo.update()
+        end
+      end)
+
+    result
+  end
 
   @doc """
   Gets a user by email and password.

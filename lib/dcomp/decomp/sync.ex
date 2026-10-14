@@ -45,8 +45,9 @@ defmodule Dcomp.Decomp.Sync do
     with :ok <- Mirror.fetch(game),
          {:ok, head} <- Mirror.head(game),
          {:ok, state} <- read_state(game, head) do
-      events = game |> commits_since(head) |> Enum.flat_map(&events_for(game, &1))
-      persist(game, head, state, events)
+      {commits, rebuild?} = commits_since(game, head)
+      events = Enum.flat_map(commits, &events_for(game, &1))
+      persist(game, head, state, events, rebuild?)
     end
   end
 
@@ -58,22 +59,46 @@ defmodule Dcomp.Decomp.Sync do
         {:error, "functions.csv not found at #{String.slice(head, 0, 8)}"}
 
       csv ->
-        {:ok,
-         %{
-           functions: parse_csv(csv),
-           rules: parse_rules(Mirror.read(game, head, "pool.toml") || ""),
-           solved: solved_addrs(Mirror.ls(game, head, "src")),
-           claims: read_claims(game, head),
-           strikes: read_strikes(game, head)
-         }}
+        with {:ok, functions} <- parse_csv(csv) do
+          {:ok,
+           %{
+             functions: functions,
+             rules: parse_rules(Mirror.read(game, head, "pool.toml") || ""),
+             solved: solved_addrs(Mirror.ls(game, head, "src")),
+             claims: read_claims(game, head),
+             strikes: read_strikes(game, head)
+           }}
+        end
     end
   end
 
+  # Strict on purpose: the sync deletes every function missing from the result, so a typo must
+  # fail the sync (keeping the last good data) instead of silently dropping a row.
   defp parse_csv(csv) do
-    for line <- String.split(csv, "\n", trim: true),
-        [addr, size, sha1] <- [line |> String.trim() |> String.split(",")],
-        {size, ""} <- [Integer.parse(size)] do
-      %{addr: String.upcase(addr), size: size, sha1: sha1}
+    rows =
+      csv
+      |> String.split("\n", trim: true)
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == "" or &1 == "addr,size,sha1"))
+
+    rows
+    |> Enum.with_index(1)
+    |> Enum.reduce_while({:ok, []}, fn {line, n}, {:ok, acc} ->
+      with [addr, size, sha1] <- String.split(line, ","),
+           true <- hex?(addr),
+           {size, ""} when size >= 0 <- Integer.parse(size),
+           addr = String.upcase(addr),
+           false <- Enum.any?(acc, &(&1.addr == addr)) do
+        {:cont, {:ok, [%{addr: addr, size: size, sha1: sha1} | acc]}}
+      else
+        _ ->
+          {:halt,
+           {:error, "functions.csv: bad or duplicate row #{n}: #{String.slice(line, 0, 60)}"}}
+      end
+    end)
+    |> case do
+      {:ok, list} -> {:ok, Enum.reverse(list)}
+      error -> error
     end
   end
 
@@ -131,9 +156,11 @@ defmodule Dcomp.Decomp.Sync do
   defp read_strikes(game, rev) do
     for name <-
           game |> Mirror.ls(rev, "pool/strikes") |> Enum.reject(&String.starts_with?(&1, ".")),
+        login?(name),
         {n, _} <- [
           Integer.parse(String.trim(Mirror.read(game, rev, "pool/strikes/#{name}") || ""))
         ],
+        n >= 0,
         into: %{} do
       {name, n}
     end
@@ -141,9 +168,15 @@ defmodule Dcomp.Decomp.Sync do
 
   ## History
 
+  # `rebuild?` is true when the branch no longer contains the last synced commit (force-push or
+  # branch change): the whole history is replayed and the old events are dropped.
+  defp commits_since(%Game{last_synced_sha: nil} = game, head),
+    do: {Mirror.log(game, nil, head), false}
+
   defp commits_since(%Game{last_synced_sha: from} = game, head) do
-    from = if from && Mirror.ancestor?(game, from, head), do: from
-    Mirror.log(game, from, head)
+    if Mirror.ancestor?(game, from, head),
+      do: {Mirror.log(game, from, head), false},
+      else: {Mirror.log(game, nil, head), true}
   end
 
   # Returns [%{type, addr, sha, at, login}] for one commit.
@@ -207,11 +240,12 @@ defmodule Dcomp.Decomp.Sync do
 
   ## Persisting
 
-  defp persist(game, head, state, events) do
+  defp persist(game, head, state, events, rebuild?) do
     now = DateTime.utc_now(:second)
 
     result =
       Repo.transaction(fn ->
+        if rebuild?, do: Repo.delete_all(from e in Event, where: e.game_id == ^game.id)
         ids = upsert_contributors(state, events, now)
         insert_events(game, events, ids, now)
         sync_functions(game, state, ids, now)

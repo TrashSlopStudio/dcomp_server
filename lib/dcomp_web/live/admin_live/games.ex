@@ -171,7 +171,7 @@ defmodule DcompWeb.AdminLive.Games do
               </div>
               <.live_file_input
                 upload={@uploads.image}
-                class="file-input w-full"
+                class="block w-full cursor-pointer rounded-lg border border-base-300 bg-base-100 text-sm file:mr-3 file:cursor-pointer file:border-0 file:bg-primary file:px-4 file:py-2 file:text-primary-content hover:file:opacity-90"
               />
               <div :for={entry <- @uploads.image.entries} class="mt-2 text-sm">
                 <div class="flex items-center gap-3">

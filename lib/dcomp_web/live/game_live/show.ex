@@ -168,7 +168,7 @@ defmodule DcompWeb.GameLive.Show do
             <canvas
               id="puzzle-canvas"
               class="block w-full rounded-xl"
-              aria-label={"#{@game.name} puzzle"}
+              aria-label={"#{@game.name} puzzle: #{@m.totals.solved.count} of #{@m.totals.all.count} functions solved, #{@m.totals.claimed.count} claimed"}
             ></canvas>
             <div
               id="puzzle-tip"

@@ -7,14 +7,20 @@ defmodule Dcomp.Decomp do
 
   import Ecto.Query
 
-  alias Dcomp.Decomp.{Game, Setting}
+  alias Dcomp.Decomp.{Game, Mirror, Setting}
   alias Dcomp.Repo
 
   ## Settings
 
   @doc "Returns the single settings row, creating it with defaults on first use."
   def get_settings do
-    Repo.one(from s in Setting, limit: 1) || Repo.insert!(%Setting{})
+    Repo.one(from s in Setting, limit: 1) || insert_settings()
+  end
+
+  # Two first requests can race; the singleton index makes the loser a no-op, so both read one row.
+  defp insert_settings do
+    Repo.insert!(%Setting{}, on_conflict: :nothing)
+    Repo.one!(from s in Setting, limit: 1)
   end
 
   def change_settings(%Setting{} = setting, attrs \\ %{}), do: Setting.changeset(setting, attrs)
@@ -70,5 +76,10 @@ defmodule Dcomp.Decomp do
     game |> Game.image_changeset(image_path) |> Repo.update()
   end
 
-  def delete_game(%Game{} = game), do: Repo.delete(game)
+  def delete_game(%Game{} = game) do
+    with {:ok, game} <- Repo.delete(game) do
+      Mirror.remove(game)
+      {:ok, game}
+    end
+  end
 end

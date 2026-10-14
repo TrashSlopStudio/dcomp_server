@@ -109,6 +109,56 @@ defmodule Dcomp.Decomp.SyncTest do
     assert f["08000200"].size == 222
   end
 
+  test "a malformed functions.csv fails the sync and keeps the last good data", %{
+    dir: dir,
+    game: game
+  } do
+    {:ok, game} = Sync.run(game)
+
+    GitFixture.commit!(dir, "typo", %{"functions.csv" => "addr,size,sha1\n08000100,oops,aaa\n"})
+
+    assert {:error, msg} = Sync.run(game)
+    assert msg =~ "bad or duplicate row"
+    assert map_size(fns(game)) == 4
+  end
+
+  test "a force-pushed branch drops the events of the abandoned commits", %{dir: dir, game: game} do
+    history(dir)
+    {:ok, game} = Sync.run(game)
+    {old, 0} = System.cmd("git", ["-C", dir, "rev-parse", "HEAD"])
+    old = String.trim(old)
+    assert Repo.exists?(from e in Event, where: e.game_id == ^game.id and e.sha == ^old)
+
+    {_, 0} = System.cmd("git", ["-C", dir, "reset", "--hard", "-q", "HEAD~1"])
+    GitFixture.commit!(dir, "rewrite", %{"README" => "x"})
+
+    {:ok, game} = Sync.run(game)
+    refute Repo.exists?(from e in Event, where: e.game_id == ^game.id and e.sha == ^old)
+  end
+
+  test "editing the repo URL points the mirror at the new one", %{game: game} do
+    {:ok, game} = Sync.run(game)
+    other = GitFixture.pool_repo!()
+    on_exit(fn -> File.rm_rf!(other) end)
+
+    GitFixture.commit!(other, "only here", %{
+      "functions.csv" => "addr,size,sha1\n08000999,9,zzz\n"
+    })
+
+    {:ok, game} = Sync.run(%{game | repo_url: other})
+    assert Map.keys(fns(game)) == ["08000999"]
+  end
+
+  test "ignores strike files that aren't GitHub logins", %{dir: dir, game: game} do
+    GitFixture.commit!(dir, "strikes", %{
+      "pool/strikes/not a login!" => "2\n",
+      "pool/strikes/ok" => "-1\n"
+    })
+
+    {:ok, game} = Sync.run(game)
+    assert Repo.aggregate(from(s in Strike, where: s.game_id == ^game.id), :count) == 0
+  end
+
   test "records an error when the repo has no functions.csv", %{dir: dir, game: game} do
     GitFixture.commit!(dir, "break", %{"functions.csv" => :delete})
     assert {:error, msg} = Sync.run(game)

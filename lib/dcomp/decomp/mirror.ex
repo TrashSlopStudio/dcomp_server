@@ -16,12 +16,20 @@ defmodule Dcomp.Decomp.Mirror do
     dir = dir(game)
 
     if File.dir?(dir) do
-      ok(git(["-C", dir, "fetch", "--prune", "--quiet", "origin"], safe: true))
+      # The URL can be edited after the first clone, so point origin at the current one.
+      with {_, 0} <- git(["-C", dir, "remote", "set-url", "origin", "--", url]) do
+        ok(git(["-C", dir, "fetch", "--prune", "--quiet", "origin"], safe: true))
+      else
+        failed -> ok(failed)
+      end
     else
       File.mkdir_p!(Path.dirname(dir))
       ok(git(["clone", "--mirror", "--quiet", "--", url, dir], safe: true))
     end
   end
+
+  @doc "Deletes the local mirror (the slug is validated to lowercase letters, digits and dashes)."
+  def remove(%Game{} = game), do: File.rm_rf(dir(game))
 
   @doc "Commit sha of the game's branch."
   def head(%Game{branch: branch} = game) do
@@ -102,7 +110,10 @@ defmodule Dcomp.Decomp.Mirror do
   defp git(args, opts \\ []) do
     protocols =
       if opts[:safe] do
-        ["-c", "protocol.allow=never"] ++
+        # ponytail: aborts transfers slower than 1 kB/s for 60 s, which bounds a stalled remote
+        # but not a connect that hangs; wrap git in a killable Port if that ever bites.
+        ["-c", "http.lowSpeedLimit=1000", "-c", "http.lowSpeedTime=60"] ++
+          ["-c", "protocol.allow=never"] ++
           Enum.flat_map(
             Application.fetch_env!(:dcomp, :git_protocols),
             &["-c", "protocol.#{&1}.allow=always"]
