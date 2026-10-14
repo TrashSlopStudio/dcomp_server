@@ -20,20 +20,26 @@ defmodule Dcomp.Decomp.Syncer do
   @doc "Asks for a sync of one game soon. Returns immediately."
   def nudge(slug, server \\ __MODULE__), do: GenServer.cast(server, {:sync, slug})
 
+  @doc "Restarts the poll timer with the current interval setting (call after changing it)."
+  def reschedule(server \\ __MODULE__), do: GenServer.cast(server, :reschedule)
+
   @impl true
   def init(opts) do
-    schedule(Keyword.get(opts, :initial_delay_ms, 5_000))
-    {:ok, %{}}
+    {:ok, %{timer: schedule(Keyword.get(opts, :initial_delay_ms, 5_000))}}
   end
 
   @impl true
   def handle_info(:tick, state) do
     Enum.each(Decomp.list_games(), &sync/1)
-    schedule(Decomp.get_settings().poll_interval_s * 1000)
-    {:noreply, state}
+    {:noreply, %{state | timer: schedule(Decomp.get_settings().poll_interval_s * 1000)}}
   end
 
   @impl true
+  def handle_cast(:reschedule, %{timer: timer} = state) do
+    if timer, do: Process.cancel_timer(timer)
+    {:noreply, %{state | timer: schedule(Decomp.get_settings().poll_interval_s * 1000)}}
+  end
+
   def handle_cast({:sync, slug}, state) do
     if game = Decomp.get_game_by_slug(slug), do: sync(game)
     {:noreply, state}
@@ -55,6 +61,6 @@ defmodule Dcomp.Decomp.Syncer do
       |> Dcomp.Repo.update()
   end
 
-  defp schedule(:infinity), do: :ok
+  defp schedule(:infinity), do: nil
   defp schedule(ms), do: Process.send_after(self(), :tick, ms)
 end

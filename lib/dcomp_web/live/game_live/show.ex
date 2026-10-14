@@ -82,6 +82,34 @@ defmodule DcompWeb.GameLive.Show do
 
   defp max_bucket(dist), do: dist |> Enum.map(& &1.count) |> Enum.max(fn -> 1 end) |> max(1)
 
+  # "https://github.com/owner/repo(.git)" -> "owner/repo"; nil for other hosts.
+  defp repo_slug(%{repo_url: url}) do
+    case Regex.run(~r{^https://github\.com/([^/\s]+/[^/\s]+?)(?:\.git)?/?$}, url) do
+      [_, slug] -> slug
+      _ -> nil
+    end
+  end
+
+  defp clone_command(game) do
+    case repo_slug(game) do
+      nil -> "git clone #{game.repo_url}"
+      slug -> "gh repo fork --clone #{slug}"
+    end
+  end
+
+  defp rules(game) do
+    [
+      game.max_claims && "up to #{game.max_claims} claims at once",
+      game.claim_hours && "claims expire after #{game.claim_hours} h",
+      game.max_strikes && "#{game.max_strikes} strikes and you can't claim"
+    ]
+    |> Enum.filter(& &1)
+    |> case do
+      [] -> "Release what you won't finish: expired claims earn strikes."
+      list -> "Rules here: " <> Enum.join(list, ", ") <> ". Release what you won't finish."
+    end
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -208,6 +236,52 @@ defmodule DcompWeb.GameLive.Show do
               sub={"of #{number(@m.totals.all.count)} total"}
             />
           </div>
+          <details
+            id="contribute"
+            class="group rounded-2xl border border-base-300 bg-base-200/50 px-4 py-3 text-sm"
+          >
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-2 font-semibold">
+              <span class="flex items-center gap-2">
+                <.icon name="hero-command-line" class="size-4 text-primary" /> How to contribute
+              </span>
+              <.icon
+                name="hero-chevron-down"
+                class="size-4 text-base-content/60 transition group-open:rotate-180"
+              />
+            </summary>
+            <ol class="mt-3 list-decimal space-y-3 pl-5 text-base-content/80">
+              <li>
+                Fork and clone <a
+                  href={@game.repo_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-primary underline"
+                >
+                  {repo_slug(@game) || @game.repo_url}
+                </a>:
+                <code
+                  id="contribute-clone"
+                  class="mt-1 block break-all rounded bg-base-300 px-2 py-1.5"
+                >
+                  {clone_command(@game)}
+                </code>
+              </li>
+              <li>
+                Follow the setup in <code class="rounded bg-base-300 px-1.5 py-0.5">AGENTS.md</code>
+                (compiler tools and your own legally obtained ROM as <code class="rounded bg-base-300 px-1.5 py-0.5">baserom.gba</code>).
+              </li>
+              <li>
+                Run <code class="rounded bg-base-300 px-1.5 py-0.5">claude</code>
+                in the clone and tell it:
+                <p class="mt-2 rounded-lg bg-base-300/60 p-3 italic">
+                  "Follow AGENTS.md and contribute to this decomp: claim a function, match it, and open the pull requests against the {@game.branch} branch."
+                </p>
+              </li>
+            </ol>
+            <p id="contribute-rules" class="mt-3 text-xs text-base-content/60">
+              {rules(@game)}
+            </p>
+          </details>
         </div>
       </div>
 

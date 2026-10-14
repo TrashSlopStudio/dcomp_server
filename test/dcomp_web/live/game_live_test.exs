@@ -75,6 +75,12 @@ defmodule DcompWeb.GameLiveTest do
       assert_reply view, %{points: [[_, 1, 100], [_, 2, 300]]}
     end
 
+    test "shows how to contribute to this game's repo", %{view: view, game: game} do
+      assert has_element?(view, "#contribute")
+      assert has_element?(view, "#contribute-clone", "git clone #{game.repo_url}")
+      assert has_element?(view, "#contribute a[href='#{game.repo_url}']")
+    end
+
     test "pushes fresh data to the hooks after a sync", %{view: view, game: game} do
       Phoenix.PubSub.broadcast(Dcomp.PubSub, Sync.topic(game.slug), {:synced, game.slug})
       assert_push_event(view, "puzzle:data", %{mode: "size"})

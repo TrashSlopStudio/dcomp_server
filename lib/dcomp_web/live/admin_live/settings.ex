@@ -30,10 +30,13 @@ defmodule DcompWeb.AdminLive.Settings do
   def handle_event("save", %{"setting" => params}, socket) do
     case Decomp.update_settings(socket.assigns.settings, params) do
       {:ok, settings} ->
+        if settings.poll_interval_s != socket.assigns.settings.poll_interval_s,
+          do: Dcomp.Decomp.Syncer.reschedule()
+
         {:noreply,
          socket
          |> assign(settings: settings, form: to_form(Decomp.change_settings(settings)))
-         |> put_flash(:info, "Settings saved. The poll interval applies after the next run.")}
+         |> put_flash(:info, "Settings saved.")}
 
       {:error, changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}
