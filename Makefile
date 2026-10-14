@@ -53,7 +53,8 @@ docker.logs:
 #🐳 docker.run: @ Run the dcomp_app docker instance
 docker.run: PORT:=5000
 docker.run:
-	@docker run --detach --name dcomp_app --network dcomp_server_storage -p ${PORT}:5000 --env-file .env.prod dcomp_app
+	@docker inspect dcomp_postgres_service >/dev/null || { echo 'Start the compose postgres first: docker compose up -d postgres redis'; exit 1; }
+	@docker run --detach --name dcomp_app --network $$(docker inspect dcomp_postgres_service -f '{{range $$n, $$_ := .NetworkSettings.Networks}}{{$$n}}{{end}}') -p ${PORT}:5000 --env-file .env.prod dcomp_app
 
 #🐳 docker.connect: @ Connect to the dcomp_app running container
 docker.connect:
