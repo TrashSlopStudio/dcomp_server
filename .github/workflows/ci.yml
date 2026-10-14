@@ -2,11 +2,11 @@ name: CI
 
 on:
   workflow_dispatch:
-  # Branch pushes are covered by the pull_request run; only dev needs its own
+  # Branch pushes are covered by the pull_request run; only main needs its own
   # push run (CD-dev follows it).
   push:
     branches:
-      - dev
+      - main
     # This action is not triggered when markdown files are modified.
     paths-ignore:
       - '**.md'
@@ -17,11 +17,11 @@ on:
     paths-ignore:
       - '**.md'
 
-# A newer push to the same ref makes the older run pointless. dev is excluded:
+# A newer push to the same ref makes the older run pointless. main is excluded:
 # the deploy decision diffs only the last push, so a cancelled run would lose changes.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/dev' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   # Permissions env

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   workflow_run:
     workflows: ["CI"]
-    branches: [dev]
+    branches: [main]
     types: 
       - completed
 
@@ -12,7 +12,7 @@ permissions:
   actions: read
   contents: read
 
-# Deploys push the latest dev, so queued runs collapse to the newest one.
+# Deploys push the latest main, so queued runs collapse to the newest one.
 # Never cancel a running deploy.
 concurrency:
   group: cd-dev
