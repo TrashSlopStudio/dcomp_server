@@ -601,6 +601,16 @@ defmodule DcompWeb.GameLive.Show do
               <span class="text-base-content/70">
                 {event_label(e.type)} <span class="font-mono text-xs">{e.addr}</span>
               </span>
+              <a
+                :if={(e.type == :solve and e.sha) && repo_slug(@game)}
+                href={"https://github.com/#{repo_slug(@game)}/commit/#{e.sha}"}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={gettext("View the commit")}
+                class="font-mono text-xs text-primary hover:underline"
+              >
+                {String.slice(e.sha, 0, 7)}
+              </a>
               <span class="ml-auto whitespace-nowrap text-xs text-base-content/50">{time_ago(
                 e.at,
                 @now

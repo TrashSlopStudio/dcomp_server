@@ -250,6 +250,7 @@ defmodule Dcomp.Decomp.Metrics do
         id: e.id,
         type: e.type,
         addr: e.addr,
+        sha: e.sha,
         at: e.occurred_at,
         login: c.login,
         avatar_url: c.avatar_url
