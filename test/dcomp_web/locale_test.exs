@@ -69,7 +69,7 @@ defmodule DcompWeb.LocaleTest do
     test "the game page too, including the strings its hooks draw", %{conn: conn} do
       game = synced_game_fixture()
       conn = init_test_session(conn, %{"locale" => "es_AR"})
-      {:ok, view, _} = live(conn, ~p"/games/#{game.slug}")
+      {:ok, view, _} = live(conn, ~p"/games/#{game.id}")
       assert has_element?(view, "#contribute-open", "Contribuir")
       assert has_element?(view, "#puzzle[data-i18n*='Sin reclamar']")
     end

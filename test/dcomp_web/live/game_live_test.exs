@@ -17,7 +17,7 @@ defmodule DcompWeb.GameLiveTest do
     test "shows a card per game, linking to it", %{conn: conn} do
       game = synced_game_fixture()
       {:ok, view, _html} = live(conn, ~p"/")
-      assert has_element?(view, "#games-#{game.id}[href='/games/#{game.slug}']")
+      assert has_element?(view, "#games-#{game.id}[href='/games/#{game.id}']")
       assert has_element?(view, "#games-#{game.id}", "30.0%")
     end
 
@@ -34,7 +34,7 @@ defmodule DcompWeb.GameLiveTest do
   describe "show" do
     setup %{conn: conn} do
       game = synced_game_fixture()
-      {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}")
+      {:ok, view, _html} = live(conn, ~p"/games/#{game.id}")
       %{game: game, view: view}
     end
 
@@ -82,7 +82,7 @@ defmodule DcompWeb.GameLiveTest do
     test "shows how to contribute to this game's repo", %{view: view, game: game} do
       refute has_element?(view, "#contribute-modal")
       view |> element("#contribute-open") |> render_click()
-      assert_patch(view, ~p"/games/#{game.slug}/contribute")
+      assert_patch(view, ~p"/games/#{game.id}/contribute")
       assert has_element?(view, "#contribute-modal")
       assert has_element?(view, "#contribute-clone", "git clone #{game.repo_url}")
       assert has_element?(view, "#contribute-modal a[href='#{game.repo_url}']")
@@ -99,13 +99,13 @@ defmodule DcompWeb.GameLiveTest do
   test "shows the expected ROM SHA1 when the game has one", %{conn: conn} do
     sha = String.duplicate("ab", 20)
     game = synced_game_fixture() |> Ecto.Changeset.change(rom_sha1: sha) |> Dcomp.Repo.update!()
-    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}/contribute")
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.id}/contribute")
     assert has_element?(view, "#contribute-rom-sha1", sha)
   end
 
   test "the clone command shell-quotes an odd repo URL", %{conn: conn} do
     game = game_fixture(%{repo_url: "https://example.com/$(id);it's"})
-    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}/contribute")
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.id}/contribute")
 
     assert has_element?(
              view,
@@ -116,7 +116,7 @@ defmodule DcompWeb.GameLiveTest do
 
   test "a game deleted while viewed sends the viewer home", %{conn: conn} do
     game = synced_game_fixture()
-    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}")
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.id}")
     Dcomp.Repo.delete!(game)
 
     send(view.pid, {:synced, game.slug})
@@ -129,7 +129,7 @@ defmodule DcompWeb.GameLiveTest do
 
   test "a game that was never synced renders with zeroes", %{conn: conn} do
     game = game_fixture()
-    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}")
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.id}")
     assert has_element?(view, "#completion", "0.0%")
     assert has_element?(view, "#leaderboard-empty")
     assert has_element?(view, "#claims-empty")
@@ -138,7 +138,7 @@ defmodule DcompWeb.GameLiveTest do
   test "shows a notice when the last sync failed", %{conn: conn} do
     game = game_fixture()
     Dcomp.Repo.update!(Dcomp.Decomp.Game.sync_changeset(game, %{last_sync_error: "boom"}))
-    {:ok, view, _html} = live(conn, ~p"/games/#{game.slug}")
+    {:ok, view, _html} = live(conn, ~p"/games/#{game.id}")
     assert has_element?(view, "#sync-error")
   end
 end

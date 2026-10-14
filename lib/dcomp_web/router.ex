@@ -33,8 +33,8 @@ defmodule DcompWeb.Router do
         {DcompWeb.UserAuth, :mount_current_scope}
       ] do
       live "/", GameLive.Index
-      live "/games/:slug", GameLive.Show, :show
-      live "/games/:slug/contribute", GameLive.Show, :contribute
+      live "/games/:id", GameLive.Show, :show
+      live "/games/:id/contribute", GameLive.Show, :contribute
     end
   end
 

@@ -14,9 +14,14 @@ defmodule DcompWeb.GameLive.Show do
   alias Dcomp.Decomp.{Metrics, Sync}
 
   @impl true
-  def mount(%{"slug" => slug}, _session, socket) do
-    game = Decomp.get_game_by_slug!(slug)
-    if connected?(socket), do: Phoenix.PubSub.subscribe(Dcomp.PubSub, Sync.topic(slug))
+  def mount(%{"id" => id}, _session, socket) do
+    # A malformed id is a missing game (404), not a cast error (400).
+    game =
+      Decomp.get_game!(
+        if match?({:ok, _}, Ecto.UUID.cast(id)), do: id, else: Ecto.UUID.generate()
+      )
+
+    if connected?(socket), do: Phoenix.PubSub.subscribe(Dcomp.PubSub, Sync.topic(game.slug))
 
     {:ok, socket |> assign(page_title: game.name, game: game, layout_override: nil) |> load()}
   end
@@ -260,7 +265,7 @@ defmodule DcompWeb.GameLive.Show do
           <div class="flex flex-wrap items-center gap-3 text-sm text-base-content/60">
             <.link
               id="contribute-open"
-              patch={~p"/games/#{@game.slug}/contribute"}
+              patch={~p"/games/#{@game.id}/contribute"}
               class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 font-medium text-primary-content transition hover:opacity-90"
             >
               <.icon name="hero-command-line" class="size-4" /> {gettext("Contribute")}
@@ -1161,12 +1166,12 @@ defmodule DcompWeb.GameLive.Show do
         role="dialog"
         aria-modal="true"
         aria-labelledby="contribute-title"
-        phx-window-keydown={JS.patch(~p"/games/#{@game.slug}")}
+        phx-window-keydown={JS.patch(~p"/games/#{@game.id}")}
         phx-key="escape"
       >
         <div
           class="absolute inset-0 bg-base-300/70 backdrop-blur-sm"
-          phx-click={JS.patch(~p"/games/#{@game.slug}")}
+          phx-click={JS.patch(~p"/games/#{@game.id}")}
           aria-hidden="true"
         >
         </div>
@@ -1183,7 +1188,7 @@ defmodule DcompWeb.GameLive.Show do
               <button
                 id="contribute-close"
                 type="button"
-                phx-click={JS.patch(~p"/games/#{@game.slug}")}
+                phx-click={JS.patch(~p"/games/#{@game.id}")}
                 aria-label={gettext("Close")}
                 class="rounded-lg p-1.5 text-base-content/60 transition hover:bg-base-200 hover:text-base-content"
               >

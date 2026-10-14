@@ -27,10 +27,10 @@ defmodule DcompWeb.LiteTest do
 
   test "lite mode drops the JS puzzle and chart", %{conn: conn} do
     game = synced_game_fixture()
-    {:ok, view, _} = live(conn, ~p"/games/#{game.slug}")
+    {:ok, view, _} = live(conn, ~p"/games/#{game.id}")
     assert has_element?(view, "#puzzle") and has_element?(view, "#burn-up")
 
-    {:ok, view, _} = conn |> init_test_session(%{"lite" => true}) |> live(~p"/games/#{game.slug}")
+    {:ok, view, _} = conn |> init_test_session(%{"lite" => true}) |> live(~p"/games/#{game.id}")
     refute has_element?(view, "#puzzle")
     refute has_element?(view, "#burn-up")
     assert has_element?(view, "#burn-up-table")
