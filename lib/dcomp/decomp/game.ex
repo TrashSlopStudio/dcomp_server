@@ -32,7 +32,7 @@ defmodule Dcomp.Decomp.Game do
     game
     |> cast(attrs, [:name, :slug, :repo_url, :branch, :rom_sha1])
     |> validate_required([:name, :repo_url, :branch])
-    |> update_change(:rom_sha1, &(&1 |> String.trim() |> String.downcase()))
+    |> update_change(:rom_sha1, &normalize_sha/1)
     |> validate_format(:rom_sha1, ~r/^[0-9a-f]{40}$/, message: "must be 40 hex characters")
     |> put_default_slug()
     |> validate_format(:slug, ~r/^[a-z0-9]+(-[a-z0-9]+)*$/,
@@ -56,6 +56,10 @@ defmodule Dcomp.Decomp.Game do
       :max_strikes
     ])
   end
+
+  # `cast` turns an emptied field into a nil change, which must stay nil.
+  defp normalize_sha(nil), do: nil
+  defp normalize_sha(sha), do: sha |> String.trim() |> String.downcase()
 
   defp put_default_slug(changeset) do
     with nil <- get_field(changeset, :slug),

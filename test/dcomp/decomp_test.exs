@@ -79,6 +79,19 @@ defmodule Dcomp.DecompTest do
       refute File.exists?(dir)
     end
 
+    test "the ROM SHA1 can be cleared again" do
+      attrs = %{
+        name: "G",
+        repo_url: "https://example.com/o/r",
+        rom_sha1: String.duplicate("ab", 20)
+      }
+
+      {:ok, game} = Decomp.create_game(attrs)
+
+      assert {:ok, game} = Decomp.update_game(game, %{rom_sha1: ""})
+      assert game.rom_sha1 == nil
+    end
+
     test "repo_url must be https (git clones it)" do
       for url <- ["file:///etc", "git@github.com:a/b.git", "ext::sh -c id", "http://x.io/a"] do
         assert {:error, cs} = Decomp.create_game(%{@valid | repo_url: url})
