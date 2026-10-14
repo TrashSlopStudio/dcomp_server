@@ -31,15 +31,20 @@ defmodule Dcomp.Decomp.Sync do
   def run(%Game{} = game) do
     case do_run(game) do
       {:ok, game} ->
-        Phoenix.PubSub.broadcast(Dcomp.PubSub, topic(game.slug), {:synced, game.slug})
+        broadcast(game)
         {:ok, game}
 
       {:error, reason} ->
         reason = to_string(reason)
         game |> Game.sync_changeset(%{last_sync_error: reason}) |> Repo.update()
+        broadcast(game)
         {:error, reason}
     end
   end
+
+  # Also sent after a failure, so open pages reload and show the sync error.
+  defp broadcast(game),
+    do: Phoenix.PubSub.broadcast(Dcomp.PubSub, topic(game.slug), {:synced, game.slug})
 
   defp do_run(game) do
     with :ok <- Mirror.fetch(game),

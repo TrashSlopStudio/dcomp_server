@@ -177,6 +177,13 @@ defmodule Dcomp.Decomp.SyncTest do
     assert msg =~ "nope"
   end
 
+  test "broadcasts when a sync fails too", %{game: game} do
+    Phoenix.PubSub.subscribe(Dcomp.PubSub, Sync.topic(game.slug))
+    assert {:error, _} = Sync.run(%{game | branch: "nope"})
+    slug = game.slug
+    assert_receive {:synced, ^slug}
+  end
+
   test "broadcasts on the game topic", %{game: game} do
     Phoenix.PubSub.subscribe(Dcomp.PubSub, Sync.topic(game.slug))
     {:ok, _} = Sync.run(game)
