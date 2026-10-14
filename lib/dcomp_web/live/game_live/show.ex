@@ -213,7 +213,11 @@ defmodule DcompWeb.GameLive.Show do
             >
             </div>
           </div>
-          <details id="puzzle-list" class="mt-3 text-xs text-base-content/70">
+          <details
+            id="puzzle-list"
+            phx-mounted={JS.ignore_attributes("open")}
+            class="mt-3 text-xs text-base-content/70"
+          >
             <summary class="cursor-pointer select-none hover:text-primary">
               View all functions as a list
             </summary>
@@ -335,7 +339,11 @@ defmodule DcompWeb.GameLive.Show do
           class="relative w-full text-base-content"
         >
         </div>
-        <details class="mt-3 text-xs text-base-content/70">
+        <details
+          id="burn-up-details"
+          phx-mounted={JS.ignore_attributes("open")}
+          class="mt-3 text-xs text-base-content/70"
+        >
           <summary class="cursor-pointer select-none hover:text-primary">View as table</summary>
           <table id="burn-up-table" class="mt-2 w-full text-left">
             <thead>
