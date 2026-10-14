@@ -538,6 +538,7 @@ defmodule DcompWeb.GameLive.Show do
         // Draws every function as a piece of the game's picture: grey when unclaimed, tinted when
         // claimed, showing its slice of the picture when solved.
         const NAMES = ["Unclaimed", "Claimed", "Solved"]
+        const ANIM_MS = 1200
 
         // Squarified treemap: [{i, v}] sorted by v desc -> [{i, x, y, w, h}] filling w x h.
         function squarify(items, x, y, w, h) {
@@ -584,6 +585,9 @@ defmodule DcompWeb.GameLive.Show do
             this.pieces = []
             this.people = []
             this.rects = []
+            this.byIndex = new Map()
+            this.anims = []
+            this.prevStatus = null
             this.hover = null
             this.img = null
             this.imgUrl = undefined
@@ -612,6 +616,80 @@ defmodule DcompWeb.GameLive.Show do
             this.ro && this.ro.disconnect()
             this.theme && this.theme.disconnect()
             this.listEl && this.listEl.removeEventListener("toggle", this.onToggle)
+            this.raf && cancelAnimationFrame(this.raf)
+          },
+
+          // Pieces whose status changed since the last data (a claim, a solve, a release) get a
+          // short effect so live changes are noticed. Skipped for reduced motion and on first load.
+          queueAnims() {
+            const prev = this.prevStatus
+            this.prevStatus = new Map(this.pieces.map(p => [p[0], p[2]]))
+            if (!prev || matchMedia("(prefers-reduced-motion: reduce)").matches) return
+            const t0 = performance.now(), out = []
+            this.pieces.forEach((p, i) => {
+              const was = prev.get(p[0])
+              if (was !== undefined && was !== p[2])
+                out.push({i, kind: p[2] === 2 ? "solve" : p[2] === 1 ? "claim" : "release", t0})
+            })
+            // A rebuild can change thousands at once; animating a sample is enough.
+            this.anims = this.anims.concat(out.slice(0, 80))
+            if (this.anims.length) this.startAnim()
+          },
+
+          startAnim() {
+            if (this.raf) return
+            const tick = now => {
+              this.raf = null
+              this.anims = this.anims.filter(a => now - a.t0 < ANIM_MS)
+              this.draw()
+              if (this.anims.length) this.raf = requestAnimationFrame(tick)
+            }
+            this.raf = requestAnimationFrame(tick)
+          },
+
+          ring(cx, cy, radius, color, alpha) {
+            if (alpha <= 0 || radius <= 0) return
+            const ctx = this.ctx
+            ctx.globalAlpha = alpha
+            ctx.strokeStyle = color
+            ctx.lineWidth = 2
+            ctx.beginPath()
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+            ctx.stroke()
+            ctx.globalAlpha = 1
+          },
+
+          // Rings reach past the piece so the effect shows even on tiny squares.
+          drawAnims(c, now) {
+            const ctx = this.ctx
+            for (const a of this.anims) {
+              const r = this.byIndex.get(a.i)
+              if (!r) continue
+              const p = Math.min(Math.max((now - a.t0) / ANIM_MS, 0), 1)
+              const e = 1 - Math.pow(1 - p, 3)
+              const cx = r.x + r.w / 2, cy = r.y + r.h / 2
+              const reach = Math.max(18, Math.min(r.w, r.h) * 2)
+              if (a.kind === "claim") {
+                ctx.globalAlpha = 0.5 * (1 - p)
+                ctx.fillStyle = c.claimed
+                ctx.fillRect(r.x, r.y, r.w, r.h)
+                ctx.globalAlpha = 1
+                this.ring(cx, cy, reach * e, c.claimed, 1 - p)
+              } else if (a.kind === "solve") {
+                ctx.globalAlpha = 0.85 * (1 - e)
+                ctx.fillStyle = "#fff"
+                ctx.fillRect(r.x, r.y, r.w, r.h)
+                ctx.globalAlpha = 1
+                this.ring(cx, cy, reach * 1.4 * e, c.primary, 1 - p)
+                this.ring(cx, cy, reach * 0.8 * Math.max(e - 0.2, 0), "#fff", (1 - p) * 0.8)
+              } else {
+                ctx.globalAlpha = 0.6 * (1 - e)
+                ctx.fillStyle = c.claimed
+                ctx.fillRect(r.x, r.y, r.w, r.h)
+                ctx.globalAlpha = 1
+                this.ring(cx, cy, reach * (1 - e), c.unclaimed, (1 - p) * 0.9)
+              }
+            }
           },
 
           // Built with DOM APIs (never innerHTML) and only while the list is open.
@@ -660,6 +738,7 @@ defmodule DcompWeb.GameLive.Show do
             this.people = d.people
             this.mode = d.mode
             this.name = d.name
+            this.queueAnims()
             this.fillList()
             if (d.image === this.imgUrl && this.img) return this.layout()
             this.imgUrl = d.image
@@ -699,6 +778,7 @@ defmodule DcompWeb.GameLive.Show do
             let items = this.pieces.map((p, i) => ({i, v: this.mode === "size" ? Math.max(p[1], 1) : 1}))
             if (this.mode === "size") items.sort((a, b) => b.v - a.v)
             this.rects = squarify(items, 0, 0, w, h)
+            this.byIndex = new Map(this.rects.map(r => [r.i, r]))
             this.draw()
           },
 
@@ -710,6 +790,7 @@ defmodule DcompWeb.GameLive.Show do
               unclaimed: v("--color-base-300", "#2a2e3a"),
               claimed: v("--color-warning", "#d4a72c"),
               ring: v("--color-base-content", "#fff"),
+              primary: v("--color-primary", "#6366f1"),
             }
           },
 
@@ -742,6 +823,8 @@ defmodule DcompWeb.GameLive.Show do
                 ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1)
               }
             }
+
+            if (this.anims.length) this.drawAnims(c, performance.now())
 
             if (this.hover) {
               const r = this.hover
